@@ -12,7 +12,7 @@
       "outFiles": [
         "${workspaceFolder}/dist/**/*.js"
       ],
-      "cwd": "${workspaceFolder}/packages/test",    // Set working directory here
+      "cwd": "${workspaceFolder}/test",    // Set working directory here
     }
   ]
 }
