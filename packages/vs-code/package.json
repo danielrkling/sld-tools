@@ -1,29 +1,109 @@
 {
-  "name": "sld-vscode",
-  "displayName": "SLD - SolidJS",
-  "description": "VSCode extension to load the sld-ts-plugin for TypeScript",
-  "version": "0.0.1",
+  "name": "vscode-sld",
+  "displayName": "sld - solid-js Tagged Templates",
+  "description": "Syntax highlighting for sld tagged template literals with XML-like syntax.",
   "publisher": "danielrkling",
+  "repository": {
+    "url": "https://github.com/danielrkling/vscode-sld"
+  },
+  "version": "0.1.4",
   "engines": {
-    "vscode": "^1.70.0"
+    "vscode": ">=1.70.0"
   },
   "categories": [
     "Programming Languages"
   ],
-  "scripts": {
-    "vscode:prepublish": "tsc -p ./",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
+  "keywords": [
+    "solid-js",
+    "sld",
+    "tagged templates"
+  ],
+  "main": "./dist/extension.js",
+  "browser": "./dist/web/extension.js",
+  "activationEvents": [
+    "onLanguage:javascript",
+    "onLanguage:typescript"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "sld",
+        "extensions": [
+          ".sld"
+        ],
+        "aliases": [
+          "SLD",
+          "sld"
+        ],
+        "configuration": "./sld.language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "injectTo": [
+          "source.js",
+          "source.js.jsx",
+          "source.jsx",
+          "source.ts",
+          "source.tsx",
+          "text.html"
+        ],
+        "scopeName": "text.lit-sld",
+        "path": "./syntaxes/lit-sld.json",
+        "embeddedLanguages": {
+          "meta.embedded.block.sld": "sld"
+        }
+      },
+      {
+        "injectTo": [
+          "source.js",
+          "source.js.jsx",
+          "source.jsx",
+          "source.ts",
+          "source.tsx",
+          "text.html"
+        ],
+        "scopeName": "text.lit-sld.string.injection",
+        "path": "./syntaxes/lit-sld-string-injection.json",
+        "embeddedLanguages": {
+          "meta.template.expression.ts": "typescript"
+        }
+      },
+      {
+        "language": "sld",
+        "scopeName": "text.sld",
+        "path": "./syntaxes/sld.json"
+      }
+    ],
+    "formatters": [
+      {
+        "id": "sld Formatter",
+        "languages": [
+          "javascript",
+          "typescript"
+        ]
+      }
+    ],
+    "typescriptServerPlugins": [
+      {
+        "name": "sld-ts-plugin"
+      }
+    ]
   },
   "dependencies": {
     "sld-ts-plugin": "file:../ts-plugin"
   },
-  "contributes": {
-    "typescriptServerPlugins": [
-      {
-        "name": "sld-ts-plugin",
-        "module": "sld-ts-plugin"
-      }
-    ]
+  "devDependencies": {
+    "@types/vscode": "^1.70.0",
+    "@vscode/test-web": "^0.0.73",
+    "@vscode/vsce": "^3.6.0",
+    "esbuild": "^0.25.9"
+  },
+  "scripts": {
+    "build:web": "esbuild ./src/extension.ts --bundle --format=cjs --outfile=./dist/web/extension.js --external:vscode --minify",
+    "build": "esbuild ./src/extension.ts --bundle --format=cjs --outfile=./dist/extension.js --external:vscode --external:typescript --minify",
+    "watch": "esbuild ./src/extension.ts --bundle --format=cjs --outfile=./dist/extension.js --external:vscode --watch",
+    "prepublish": "npm run build",
+    "test": "vscode-test-web --extensionDevelopmentPath=. ./test"
   }
 }

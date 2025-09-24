@@ -1,0 +1,75 @@
+{
+  "fileTypes": ["js", "mjs", "jsx", "ts", "mts", "tsx"],
+  "injectionSelector": "L:source.js -comment -(string -meta.embedded), L:source.jsx -comment -(string -meta.embedded), L:source.ts -comment -(string -meta.embedded),  L:source.tsx -comment -(string -meta.embedded)",
+  "injections": {
+    "L:source": {
+      "patterns": [
+        {
+          "match": "<",
+          "name": "invalid.illegal.bad-angle-bracket.html"
+        }
+      ]
+    }
+  },
+  "patterns": [
+    {
+      "contentName": "meta.embedded.block.sld",
+      "begin": "(?x)(?i)(\\b(?:[\\w\\.]+\\.)?(\\w+)(?:\\(.*\\))?\\.(sld))(`)",
+      "beginCaptures": {
+        "1": {
+          "name": "entity.name.function.sld"
+        },
+        "2": {
+          "name": "entity.name.function"
+        },
+        "3": {
+          "name": "entity.name.function.sld"
+        },
+        "4": {
+          "name": "punctuation.definition.string.template.begin.sld"
+        }
+      },
+      "end": "(`)",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.template.end.sld"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.ts#template-substitution-element"
+        },
+        {
+          "include": "source.sld"
+        }
+      ]
+    },
+    {
+      "contentName": "meta.embedded.block.sld",
+      "begin": "(?i)(sld)(`)",
+      "beginCaptures": {
+        "1": {
+          "name": "entity.name.function.sld"
+        },
+        "2": {
+          "name": "punctuation.definition.string.template.begin.sld"
+        }
+      },
+      "end": "(`)",
+      "endCaptures": {
+        "0": {
+          "name": "punctuation.definition.string.template.end.sld"
+        }
+      },
+      "patterns": [
+        {
+          "include": "source.ts#template-substitution-element"
+        },
+        {
+          "include": "source.sld"
+        }
+      ]
+    }
+  ],
+  "scopeName": "inline.sld"
+}

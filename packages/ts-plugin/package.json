@@ -1,7 +1,4 @@
 {
-  "name":"sld-ts-plugin"
-}
-{
   "name": "sld-ts-plugin",
   "devDependencies": {
     "typescript": "^5.9.2"

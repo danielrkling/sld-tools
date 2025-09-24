@@ -13,6 +13,7 @@
         "${workspaceFolder}/dist/**/*.js"
       ],
       "cwd": "${workspaceFolder}/test",    // Set working directory here
+
     }
   ]
 }
