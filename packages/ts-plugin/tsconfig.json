@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "outDir": "dist",             // Output directory for compiled files
+    "rootDir": "src",             // Root directory of your source files
+    "target": "es6",              // JavaScript target version
+    "module": "commonjs",         // Module system (change to "esnext" if needed)
+    "strict": true,               // Enable all strict type-checking options
+    "esModuleInterop": true,      // Enables compatibility with CommonJS and ES Modules
+    "skipLibCheck": true,         // Skip type checking of declaration files
+    "forceConsistentCasingInFileNames": true, // Ensure consistent file casing
+    "lib":["esnext"]
+  },
+  "include": ["src/**/*"],         // Include all TS files in src
+  "exclude": ["node_modules", "dist"] // Exclude these folders
+}
