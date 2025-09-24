@@ -1,0 +1,6 @@
+{
+    "dependencies": {
+        "sld-ts-plugin": "file:../ts-plugin",
+        "solid-html": "^1.8.2"
+    }
+}
