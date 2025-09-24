@@ -1,2 +1,29 @@
 {
+  "name": "sld-vscode",
+  "displayName": "SLD - SolidJS",
+  "description": "VSCode extension to load the sld-ts-plugin for TypeScript",
+  "version": "0.0.1",
+  "publisher": "danielrkling",
+  "engines": {
+    "vscode": "^1.70.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "scripts": {
+    "vscode:prepublish": "tsc -p ./",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "dependencies": {
+    "sld-ts-plugin": "file:../ts-plugin"
+  },
+  "contributes": {
+    "typescriptServerPlugins": [
+      {
+        "name": "sld-ts-plugin",
+        "module": "sld-ts-plugin"
+      }
+    ]
+  }
 }
