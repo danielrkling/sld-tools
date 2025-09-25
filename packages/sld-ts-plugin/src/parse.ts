@@ -1,6 +1,18 @@
 import * as ts from "typescript/lib/tsserverlibrary";
-import { INode, ITag, IText, parse, SyntaxKind, tokenize } from "html5parser";
+import {
+  IAttribute,
+  INode,
+  ITag,
+  IText,
+  parse,
+  SyntaxKind,
+  tokenize,
+} from "html5parser";
 import { isNumber, isString } from "./util";
+import {
+  getFunctionTypeFromTemplate,
+  getPropertyTypeFromTemplate,
+} from "./diagnostics";
 
 export const marker = "⦿";
 const match = /\${⦿*(\d)}/;
@@ -38,7 +50,10 @@ export function getTemplateNodeAtPosition(
         return true;
       }
     } else if (ts.isTemplateExpression(node.template)) {
-      if (position >= node.template.head.getStart() && position <= node.template.head.getEnd()) {
+      if (
+        position >= node.template.head.getStart() &&
+        position <= node.template.head.getEnd()
+      ) {
         return true;
       }
       for (const span of node.template.templateSpans) {
@@ -67,30 +82,81 @@ export function getTokenAtPosition(
   return token;
 }
 
-// export function getNodeAtPosition(
-//   ts: typeof import("typescript"),
-//   sourceFile: ts.SourceFile,
-//   position: number
-// ) {
-//   const template = getTemplateNodeAtPosition(ts, sourceFile, position);
-//   if (!template) return;
-//   const nodes = parseTemplate(ts, sourceFile, template.template);
+export function getInfoAtPosition(
+  ts: typeof import("typescript"),
+  checker: ts.TypeChecker,
+  sourceFile: ts.SourceFile,
+  position: number
+) {
+  const template = getTemplateNodeAtPosition(ts, sourceFile, position);
+  if (!template) return;
+  const root = parseTemplate(ts, sourceFile, template.template);
 
-//   let foundNode
-//   nodes.children.forEach(function findNode(node,i){
-//     if (node.type===COMPONENT_NODE || node.type === ELEMENT_NODE){
-//       const child = node.children.forEach(findNode)
-//       if (node.node.open.start <= position  && position <= node.node.open.end){
-//         foundNode
-//       }
-//     }
-//   })
+  const node = findNode(root.children);
+  if (!node) return;
 
-//   const token = tokens.find((t) => t.start <= position && position <= t.end);
-//   return token;
-// }
+  if (node.type === ELEMENT_NODE || node.type === COMPONENT_NODE) {
+    if (node.node.open.start <= position && position <= node.node.open.end) {
+      const type = getFunctionTypeFromTemplate(
+        ts,
+        checker,
+        template,
+        node.name
+      );
+      return {
+        node,
+        template,
+        part: "tag",
+        type,
+      };
+    }
+    for (const prop of node.props) {
+      prop.attr.start <= position && position <= prop.attr.end;
+      const type = getPropertyTypeFromTemplate(
+        ts,
+        checker,
+        template,
+        node.name,
+        prop.name
+      );
+      return {
+        node,
+        template,
+        part: "prop",
+        name: prop.name,
+        prop,
+        type,
+      };
+    }
+    return {
+      node,
+      template,
+      part: "whitespace",
+    };
+  }
 
+  return {
+    node,
+    template,
+  };
 
+  function findNode(nodes: ChildNode[]): ChildNode | undefined {
+    for (const node of nodes) {
+      if (node.type === COMPONENT_NODE || node.type === ELEMENT_NODE) {
+        const child = findNode(node.children);
+        if (child) return child;
+        if (
+          node.node.open.start <= position &&
+          position <= node.node.open.end
+        ) {
+          return node;
+        }
+      } else if (node.start <= position && position <= node.end) {
+        return node;
+      }
+    }
+  }
+}
 
 export function getTemplateHTML(
   ts: typeof import("typescript"),
@@ -216,30 +282,35 @@ export type BooleanProp = {
   type: typeof BOOLEAN_PROP;
   name: string;
   value: true;
+  attr: IAttribute;
 };
 export const STATIC_PROP = 2;
 export type StaticProp = {
   type: typeof STATIC_PROP;
   name: string;
   value: string;
+  attr: IAttribute;
 };
 export const DYNAMIC_PROP = 3;
 export type DynamicProp = {
   type: typeof DYNAMIC_PROP;
   name: string;
   value: number;
+  attr: IAttribute;
 };
 export const MIXED_PROP = 4;
 export type MixedProp = {
   type: typeof MIXED_PROP;
   name: string;
   value: Array<string | number>;
+  attr: IAttribute;
 };
 export const SPREAD_PROP = 5;
 export type SpreadProp = {
   type: typeof SPREAD_PROP;
   name: "...";
   value: number;
+  attr: IAttribute;
 };
 
 export type Property =
@@ -277,19 +348,20 @@ function parseNode(node: INode): ChildNode | ChildNode[] {
     } as CommentNode;
   }
 
-  const props = node.attributes.flatMap((v) => {
-    const nameParts = getParts(v.name.value);
+  const props = node.attributes.flatMap((attr) => {
+    const nameParts = getParts(attr.name.value);
 
     if (nameParts.length === 1) {
       const part = nameParts[0];
       if (isString(part)) {
-        const valueParts = getParts(v.value?.value);
+        const valueParts = getParts(attr.value?.value);
         if (valueParts.length === 0) {
           //boolean attribute <input disabled>
           return {
             type: BOOLEAN_PROP,
             name: part,
             value: true,
+            attr,
           } as BooleanProp;
         } else if (valueParts.length === 1) {
           if (isString(valueParts[0])) {
@@ -297,12 +369,14 @@ function parseNode(node: INode): ChildNode | ChildNode[] {
               type: STATIC_PROP,
               name: part,
               value: valueParts[0],
+              attr,
             } as StaticProp;
           } else {
             return {
               type: DYNAMIC_PROP,
               name: part,
               value: valueParts[0],
+              attr,
             } as DynamicProp;
           }
         } else {
@@ -311,6 +385,7 @@ function parseNode(node: INode): ChildNode | ChildNode[] {
             type: MIXED_PROP,
             name: part,
             value: valueParts,
+            attr,
           } as MixedProp;
         }
       }
@@ -321,6 +396,7 @@ function parseNode(node: INode): ChildNode | ChildNode[] {
           type: SPREAD_PROP,
           name: "...",
           value: nameParts[1],
+          attr,
         } as SpreadProp;
       }
     }

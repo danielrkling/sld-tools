@@ -7,7 +7,7 @@
       "request": "launch",
       "runtimeExecutable": "${execPath}",
       "args": [
-        "--extensionDevelopmentPath=${workspaceFolder}/packages/vs-code"
+        "--extensionDevelopmentPath=${workspaceFolder}/packages/sld-vs-code"
       ],
       "outFiles": [
         "${workspaceFolder}/dist/**/*.js"

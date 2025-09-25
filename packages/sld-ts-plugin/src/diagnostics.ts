@@ -114,6 +114,55 @@ export function getSemanticDiagnostics(
   return diagnostics;
 }
 
+export function getFunctionTypeFromTemplate(
+  ts: typeof import("typescript/lib/tsserverlibrary"),
+  checker: ts.TypeChecker,
+  template: ts.TaggedTemplateExpression,
+  name: string
+) {
+  const sym = checker.getSymbolAtLocation(template.tag)!;
+  const type = checker.getTypeOfSymbolAtLocation(sym, template);
+  const components = checker.getTypeOfSymbolAtLocation(
+    type.getProperty("components")!,
+    template
+  );
+  const comp = components.getProperty(name);
+  const fnType =
+    comp &&
+    comp.valueDeclaration &&
+    checker.getTypeOfSymbolAtLocation(comp, comp?.valueDeclaration);
+
+  return fnType;
+}
+
+export function getPropertyTypeFromTemplate(
+  ts: typeof import("typescript/lib/tsserverlibrary"),
+  checker: ts.TypeChecker,
+  template: ts.TaggedTemplateExpression,
+  componentName: string,
+  propName: string
+) {
+  const fnType = getFunctionTypeFromTemplate(
+    ts,
+    checker,
+    template,
+    componentName
+  );
+  if (!fnType) return;
+  const signatures = fnType.getCallSignatures();
+  if (signatures.length === 0) return;
+  const signature = signatures[0];
+  const type = signature.getParameters()[0];
+  if (!type) return;
+  const typeAtLocation = checker.getTypeOfSymbolAtLocation(
+    type,
+    type.valueDeclaration!
+  );
+  const typeArgs = typeAtLocation.getProperty(propName);
+  if (!typeArgs) return;
+  return checker.getTypeOfSymbolAtLocation(typeArgs, typeArgs.valueDeclaration!);
+}
+
 function canCallWithArgs(
   tsApi: typeof ts,
   checker: ts.TypeChecker,

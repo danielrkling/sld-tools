@@ -3,6 +3,7 @@ import {
   ChildNode,
   COMPONENT_NODE,
   ELEMENT_NODE,
+  getInfoAtPosition,
   getSLDTemplatesNodes,
   getTemplateNodeAtPosition,
   getTokenAtPosition,
@@ -20,60 +21,31 @@ export function getQuickInfoAtPosition(
   const sourceFile = program?.getSourceFile(fileName);
   if (!sourceFile) return;
 
-  const template = getTemplateNodeAtPosition(ts, sourceFile, position);
-  if (!template) return;
-  const nodes = parseTemplate(ts, sourceFile, template.template);
+  const info = getInfoAtPosition(ts, checker, sourceFile, position);
 
-  const sym = checker.getSymbolAtLocation(template.tag)!;
-  const tagType = checker.getTypeOfSymbolAtLocation(sym, template);
-  const components = checker.getTypeOfSymbolAtLocation(
-    tagType.getProperty("components")!,
-    template
-  );
+  if (!info) return;
 
-  return nodes.children.map(getQuickInfo).find(Boolean);
-
-  function getQuickInfo(node: ChildNode) {
-    if (node.type === COMPONENT_NODE || node.type === ELEMENT_NODE) {
-      node.children.map(getQuickInfo).find(Boolean);
-      if (node.node.open.start <= position && position <= node.node.open.end) {
-        if (node.type === COMPONENT_NODE) {
-          return {
-            kind: ts.ScriptElementKind.classElement,
-            kindModifiers: "",
-            textSpan: {
-              start: node.node.open.start + 1,
-              length: node.name.length,
-            },
-            displayParts: [
-              { text: node.name, kind: ts.ScriptElementKind.functionElement },
-              { text: ": ", kind: "punctuation" },
-              {
-                text: checker.typeToString(
-                  checker.getTypeOfSymbol(components.getProperty(node.name)!)
-                ),
-                kind: "text",
-              },
-            ],
-            documentation: [],
-          };
-        } else {
-          return {
-            kind: ts.ScriptElementKind.classElement,
-            kindModifiers: "",
-            textSpan: { start: node.node.start+1, length: node.name.length },
-            displayParts: [
-              { text: `HTML Element: <${node.name}>`, kind: "text" },
-            ],
-            documentation: [
-              {
-                text: `This is an html element`,
-                kind: "text",
-              },
-            ],
-          };
-        }
-      }
+  if (info.node.type === COMPONENT_NODE) {
+    if (info.part === "tag") {
+      return {
+        kind: ts.ScriptElementKind.classElement,
+        kindModifiers: "",
+        textSpan: {
+          start: info.node.node.open.start + 1,
+          length: info.node.name.length,
+        },
+        displayParts: [{ text: checker.typeToString(info.type), kind: "text" }],
+      };
+    } else if (info.part === "prop") {
+      return {
+        kind: ts.ScriptElementKind.classElement,
+        kindModifiers: "",
+        textSpan: {
+          start: info.prop?.attr.start + 1,
+          length: info.prop?.name.length,
+        },
+        displayParts: [{ text: checker.typeToString(info.type), kind: "text" }],
+      };
     }
   }
 }
