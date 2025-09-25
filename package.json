@@ -1,0 +1,16 @@
+{
+  "name": "sld-tools",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build:ts-plugin": "npm run build --workspace=sld-ts-plugin",
+    "build:vs-code": "npm run build --workspace=sld-vs-code",
+    "watch:ts-plugin": "npm run watch --workspace=sld-ts-plugin",
+    "watch:vs-code": "npm run watch --workspace=sld-vs-code",
+    "build": "npm run build:ts-plugin && npm run build:vs-code"
+
+  }
+}

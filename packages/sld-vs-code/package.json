@@ -1,12 +1,12 @@
 {
-  "name": "vscode-sld",
+  "name": "sld-vs-code",
   "displayName": "sld - solid-js Tagged Templates",
-  "description": "Syntax highlighting for sld tagged template literals with XML-like syntax.",
+  "description": "Syntax highlighting for sld tagged template literals with JSX-like syntax.",
   "publisher": "danielrkling",
   "repository": {
-    "url": "https://github.com/danielrkling/vscode-sld"
+    "url": "https://github.com/danielrkling/sld-tools"
   },
-  "version": "0.1.4",
+  "version": "0.0.1",
   "engines": {
     "vscode": ">=1.70.0"
   },
@@ -89,9 +89,6 @@
         "name": "sld-ts-plugin"
       }
     ]
-  },
-  "dependencies": {
-    "sld-ts-plugin": "file:../ts-plugin"
   },
   "devDependencies": {
     "@types/vscode": "^1.70.0",
