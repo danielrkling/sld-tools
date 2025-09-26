@@ -1,4 +1,4 @@
-import { tokenize, TokenKind } from "./tokenize";
+import { IToken, State, tokenize, TokenKind } from "./tokenize";
 
 export const enum INodeType {
   Root,
@@ -182,6 +182,8 @@ export function parse<T = any>(
   ...values: T[]
 ): IRoot {
   let offset = 0;
+  let state: State | undefined = undefined;
+  let tokens: IToken[] = [];
 
   const root: IRoot = {
     type: INodeType.Root,
@@ -195,7 +197,7 @@ export function parse<T = any>(
 
   for (let partIndex = 0; partIndex < templates.length; partIndex++) {
     const part = templates[partIndex];
-    const tokens = tokenize(part);
+    [tokens, offset, state] = tokenize(part, offset, state);
     console.log(tokens)
 
     for (const token of tokens) {
