@@ -1,13 +1,14 @@
 import type * as ts from "typescript/lib/tsserverlibrary";
 import {
   getSLDTemplatesNodes,
-  parseTemplate,
-  COMPONENT_NODE,
-  STATIC_PROP,
-  BOOLEAN_PROP,
-  MIXED_PROP,
-  DYNAMIC_PROP,
   ELEMENT_NODE,
+  parseSLDTemplate,
+  COMPONENT_NODE,
+  BOOLEAN_PROPERTY,
+  STRING_PROPERTY,
+  DYNAMIC_PROPERTY,
+  MIXED_PROPERTY,
+  SPREAD_PROPERTY,
 } from "./parse";
 import { SyntaxKind } from "html5parser";
 
@@ -25,49 +26,49 @@ export function getSemanticDiagnostics(
   const templates = getSLDTemplatesNodes(ts, sourceFile);
 
   templates.forEach((node) => {
-    const template = node.template;
+    const root = parseSLDTemplate(ts, checker, sourceFile, node);
 
-    const nodes = parseTemplate(ts, sourceFile, template);
-    // const type = checker.getTypeAtLocation(node.tag);
-    const sym = checker.getSymbolAtLocation(node.tag)!;
-    const type = checker.getTypeOfSymbolAtLocation(sym, node);
-    const components = checker.getTypeOfSymbolAtLocation(
-      type.getProperty("components")!,
-      node
-    );
-
-    nodes.children.forEach(function walk(n) {
+    root.children.forEach(function walk(n) {
       if (n.type === COMPONENT_NODE) {
-        const comp = components.getProperty(n.name);
-        const fnType =
-          comp &&
-          comp.valueDeclaration &&
-          checker.getTypeOfSymbolAtLocation(comp, comp?.valueDeclaration);
+        const fnType = n.tsType;
 
         if (fnType) {
           const propType = getTypeFromVirtualTypeLiteral(
             ts.factory.createTypeLiteralNode(
-              n.props.map((prop) => {
+              n.props.flatMap((prop) => {
+                if (prop.type === SPREAD_PROPERTY) {
+                  return checker
+                    .getTypeAtLocation(prop.expression)
+                    .getProperties()
+                    .map((p) => {
+                      const type = checker.typeToTypeNode(
+                        checker.getTypeOfSymbolAtLocation(
+                          p,
+                          p.valueDeclaration!
+                        ),
+                        p.valueDeclaration!,
+                        ts.NodeBuilderFlags.NoTruncation
+                      );
+                      return type;
+                    });
+                }
+
                 let type;
-                if (prop.type === BOOLEAN_PROP) {
+                if (prop.type === BOOLEAN_PROPERTY) {
                   type = ts.factory.createKeywordTypeNode(
                     ts.SyntaxKind.BooleanKeyword
                   );
                 } else if (
-                  prop.type === STATIC_PROP ||
-                  prop.type === MIXED_PROP
+                  prop.type === STRING_PROPERTY ||
+                  prop.type === MIXED_PROPERTY
                 ) {
                   type = ts.factory.createKeywordTypeNode(
                     ts.SyntaxKind.StringKeyword
                   );
-                } else if (prop.type === DYNAMIC_PROP) {
-                  if (!ts.isTemplateExpression(template)) throw new Error();
-                  const expression =
-                    template.templateSpans[prop.value].expression;
-
+                } else if (prop.type === DYNAMIC_PROPERTY) {
                   type = checker.typeToTypeNode(
-                    checker.getTypeAtLocation(expression),
-                    expression.parent,
+                    checker.getTypeAtLocation(prop.expression),
+                    prop.expression.parent,
                     ts.NodeBuilderFlags.NoTruncation
                   );
                 }
@@ -87,7 +88,7 @@ export function getSemanticDiagnostics(
           if (!canCallWithArgs(ts, checker, fnType, [propType])) {
             diagnostics.push({
               file: sourceFile,
-              start: n.node.open.start + 1,
+              start: n.open.start + 1,
               length: n.name.length,
               messageText: `${n.name} have invalid arguments`,
               category: ts.DiagnosticCategory.Error,
@@ -97,7 +98,7 @@ export function getSemanticDiagnostics(
         } else {
           diagnostics.push({
             file: sourceFile,
-            start: n.node.open.start + 1,
+            start: n.open.start + 1,
             length: n.name.length,
             messageText: `${n.name} is not defined`,
             category: ts.DiagnosticCategory.Error,
@@ -160,7 +161,10 @@ export function getPropertyTypeFromTemplate(
   );
   const typeArgs = typeAtLocation.getProperty(propName);
   if (!typeArgs) return;
-  return checker.getTypeOfSymbolAtLocation(typeArgs, typeArgs.valueDeclaration!);
+  return checker.getTypeOfSymbolAtLocation(
+    typeArgs,
+    typeArgs.valueDeclaration!
+  );
 }
 
 function canCallWithArgs(

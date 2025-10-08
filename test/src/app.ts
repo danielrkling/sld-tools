@@ -5,9 +5,15 @@ function Message(props: { message: string }) {
    return props.message
 }
 
+
+
 const x = sld.define({ Message, Badge }).sld`
-   <div class123="" asd > Hello World!</div>
+   <input class=${"Asdd  "} asd > Hello World!</div>
+   <Badge  ></Badge>
+   <div children> </div>
+   <abbr ></abbr>
    <Show when=${true} keyed=${false} children=${() => "123"} />
-   <Message message=${"1"} >
-   <Badge class="123" textValue="123">New</Badge>
+   <Message  />
+   <Badge  class="123" textValue="123">New</Badge>
+   
 `;

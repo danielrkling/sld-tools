@@ -4,19 +4,201 @@ import {
   INode,
   ITag,
   IText,
-  parse,
+  parse as html5parse,
   SyntaxKind,
   tokenize,
 } from "html5parser";
-import { isNumber, isString } from "./util";
 import {
   getFunctionTypeFromTemplate,
   getPropertyTypeFromTemplate,
 } from "./diagnostics";
 
-export const marker = "⦿";
-const match = /\${⦿*(\d)}/;
-const onlyMatch = /^\${[⦿]*}/;
+import { isNumber, isString } from "./util";
+
+//AST Node types
+
+//Non reactive text
+export const TEXT_NODE = 1;
+export type TextNode = {
+  type: typeof TEXT_NODE;
+  value: string;
+  start: number;
+  end: number;
+};
+
+//Non reactive Comment Node <!--value-->
+export const COMMENT_NODE = 2;
+export type CommentNode = {
+  type: typeof COMMENT_NODE;
+  value: string;
+  start: number;
+  end: number;
+};
+
+//Reactive Hole
+export const INSERT_NODE = 3;
+export type InsertNode = {
+  type: typeof INSERT_NODE;
+  start: number;
+  end: number;
+  expression: ts.Expression;
+};
+
+//tag with lowercase first letter <div />
+export const ELEMENT_NODE = 4;
+export type ElementNode = {
+  type: typeof ELEMENT_NODE;
+  name: string;
+  props: Property[];
+  children: ChildNode[];
+  open: {
+    start: number;
+    end: number;
+  };
+  close: {
+    start: number;
+    end: number;
+  } | null;
+  start: number;
+  end: number;
+  tsType: ts.Type | undefined;
+};
+
+//Tag with capital first letter <Div />
+export const COMPONENT_NODE = 5;
+export type ComponentNode = {
+  type: typeof COMPONENT_NODE;
+  name: string;
+  props: Property[];
+  children: ChildNode[];
+  open: {
+    start: number;
+    end: number;
+  };
+  close: {
+    start: number;
+    end: number;
+  } | null;
+  start: number;
+  end: number;
+  tsType: ts.Type | undefined;
+};
+
+export const ROOT_NODE = 6;
+export type RootNode = {
+  type: typeof ROOT_NODE;
+  children: ChildNode[];
+  start: number;
+  end: number;
+  components: ts.Type;
+  elements: ts.Type;
+};
+
+export type ChildNode =
+  | TextNode
+  | ComponentNode
+  | ElementNode
+  | InsertNode
+  | CommentNode;
+
+export type Property =
+  | BooleanProperty
+  | StringProperty
+  | DynamicProperty
+  | MixedProperty
+  | SpreadProperty
+  | AnonymousProperty;
+
+// <input disabled>
+export const BOOLEAN_PROPERTY = 1;
+export type BooleanProperty = {
+  type: typeof BOOLEAN_PROPERTY;
+  name: string;
+  start: number;
+  end: number;
+};
+
+// <input value="myString"> <input value='myString'> <input value=""> <input value=''>
+export const STRING_PROPERTY = 2;
+export type StringProperty = {
+  type: typeof STRING_PROPERTY;
+  name: string;
+  value: string;
+  start: number;
+  end: number;
+  nameLocation: {
+    start: number;
+    end: number;
+  };
+  valueLocation: {
+    start: number;
+    end: number;
+  };
+};
+
+// <input value=${}> <input value="${}""> <input value='${}'>
+export const DYNAMIC_PROPERTY = 3;
+export type DynamicProperty = {
+  type: typeof DYNAMIC_PROPERTY;
+  name: string;
+  nameLocation: {
+    start: number;
+    end: number;
+  };
+  valueLocation: {
+    start: number;
+    end: number;
+  };
+  expression: ts.Expression;
+  start: number;
+  end: number;
+};
+
+// <input value=" ${}"> <input value="input-${}"> <input value='${"value1"} ${"value2"}'>
+export const MIXED_PROPERTY = 4;
+export type MixedProperty = {
+  type: typeof MIXED_PROPERTY;
+  name: string;
+  value: Array<string | number>;
+  nameLocation: {
+    start: number;
+    end: number;
+  };
+  expressions: ts.Expression[];
+  valueLocation: {
+    start: number;
+    end: number;
+  };
+  start: number;
+  end: number;
+};
+
+// <input ...${} />
+export const SPREAD_PROPERTY = 5;
+export type SpreadProperty = {
+  type: typeof SPREAD_PROPERTY;
+  expression: ts.Expression;
+  start: number;
+  end: number;
+};
+
+// <input ${} />
+export const ANONYMOUS_PROPERTY = 6;
+export type AnonymousProperty = {
+  type: typeof ANONYMOUS_PROPERTY;
+  expression: ts.Expression;
+  start: number;
+  end: number;
+};
+
+//string or boolean means static, number means hole and is index, array means mix of string and holes
+export type ValueParts = string | boolean | number | Array<string | number>;
+
+//Needs to be unique character that would never be in the template literal
+const marker = "⧙";
+const filler = "�";
+//Captures index of hole
+const match = new RegExp(`${marker}${filler}*(\\d+)${marker}`, "g");
 
 export function getSLDTemplatesNodes(
   ts: typeof import("typescript"),
@@ -36,6 +218,67 @@ export function getSLDTemplatesNodes(
     });
   }
   return nodes;
+}
+
+export function getRootAtPosition(
+  ts: typeof import("typescript"),
+  checker: ts.TypeChecker,
+  sourceFile: ts.SourceFile,
+  position: number
+): RootNode | undefined {
+  const templateNode = getTemplateNodeAtPosition(ts, sourceFile, position);
+  if (!templateNode) return;
+  const root = parseSLDTemplate(ts, checker, sourceFile, templateNode);
+  return root;
+}
+
+export function getNodeAtPosition(
+  ts: typeof import("typescript"),
+  checker: ts.TypeChecker,
+  sourceFile: ts.SourceFile,
+  position: number
+) {
+  const templateNode = getTemplateNodeAtPosition(ts, sourceFile, position);
+  if (!templateNode) return;
+  const root = parseSLDTemplate(ts, checker, sourceFile, templateNode);
+
+  return getNodeInRootAtPosition(root, position);
+}
+
+export function getNodeInRootAtPosition(
+  root: RootNode,
+  position: number
+): ChildNode | undefined {
+  let foundNode: ChildNode | undefined;
+  root.children.forEach(findNode);
+  return foundNode;  
+  function findNode(node: ChildNode) {
+    switch (node.type) {
+      case TEXT_NODE:
+      case COMMENT_NODE:
+      case INSERT_NODE:
+        if (position >= node.start && position <= node.end) {
+          foundNode = node;
+        }
+        break;
+      case ELEMENT_NODE:
+      case COMPONENT_NODE:
+        if (position >= node.open.start && position <= node.open.end) {
+          return (foundNode = node);
+        }
+        if (
+          node.close &&
+          position >= node.close.start &&
+          position <= node.close.end
+        ) {
+          return (foundNode = node);
+        }
+        if (position >= node.start && position <= node.end) {
+          foundNode = node;
+          node.children.forEach(findNode);
+        }
+    }
+  }
 }
 
 export function getTemplateNodeAtPosition(
@@ -69,93 +312,41 @@ export function getTemplateNodeAtPosition(
   return node;
 }
 
-export function getTokenAtPosition(
-  ts: typeof import("typescript"),
-  sourceFile: ts.SourceFile,
-  position: number
-) {
-  const template = getTemplateNodeAtPosition(ts, sourceFile, position);
-  if (!template) return;
-  const tokens = tokenizeTemplate(ts, sourceFile, template.template);
-
-  const token = tokens.find((t) => t.start <= position && position <= t.end);
-  return token;
-}
-
-export function getInfoAtPosition(
+export function parseSLDTemplate(
   ts: typeof import("typescript"),
   checker: ts.TypeChecker,
   sourceFile: ts.SourceFile,
-  position: number
-) {
-  const template = getTemplateNodeAtPosition(ts, sourceFile, position);
-  if (!template) return;
-  const root = parseTemplate(ts, sourceFile, template.template);
+  node: ts.TaggedTemplateExpression
+): RootNode {
+  const html = getTemplateHTML(ts, sourceFile, node.template);
+  const ast = html5parse(html);
+  let spans = [] as readonly ts.TemplateSpan[];
 
-  const node = findNode(root.children);
-  if (!node) return;
-
-  if (node.type === ELEMENT_NODE || node.type === COMPONENT_NODE) {
-    if (node.node.open.start <= position && position <= node.node.open.end) {
-      const type = getFunctionTypeFromTemplate(
-        ts,
-        checker,
-        template,
-        node.name
-      );
-      return {
-        node,
-        template,
-        part: "tag",
-        type,
-      };
-    }
-    for (const prop of node.props) {
-      prop.attr.start <= position && position <= prop.attr.end;
-      const type = getPropertyTypeFromTemplate(
-        ts,
-        checker,
-        template,
-        node.name,
-        prop.name
-      );
-      return {
-        node,
-        template,
-        part: "prop",
-        name: prop.name,
-        prop,
-        type,
-      };
-    }
-    return {
-      node,
-      template,
-      part: "whitespace",
-    };
+  if (ts.isTemplateExpression(node.template)) {
+    spans = node.template.templateSpans;
   }
 
-  return {
-    node,
-    template,
-  };
+  const sym = checker.getSymbolAtLocation(node.tag)!;
+  const type = checker.getTypeOfSymbolAtLocation(sym, node);
+  const components = checker.getTypeOfSymbolAtLocation(
+    type.getProperty("components")!,
+    node
+  );
+  const elements = checker.getTypeOfSymbolAtLocation(
+    type.getProperty("elements")!,
+    node
+  );
+  const root = {
+    type: ROOT_NODE,
+    children: [] as ChildNode[],
+    start: node.getStart(sourceFile),
+    end: node.getEnd(),
+    components,
+    elements,
+  } as RootNode;
+  root.children = parseNodes(ast, spans, root, checker);
 
-  function findNode(nodes: ChildNode[]): ChildNode | undefined {
-    for (const node of nodes) {
-      if (node.type === COMPONENT_NODE || node.type === ELEMENT_NODE) {
-        const child = findNode(node.children);
-        if (child) return child;
-        if (
-          node.node.open.start <= position &&
-          position <= node.node.open.end
-        ) {
-          return node;
-        }
-      } else if (node.start <= position && position <= node.end) {
-        return node;
-      }
-    }
-  }
+  return root;
 }
 
 export function getTemplateHTML(
@@ -185,9 +376,9 @@ export function getTemplateHTML(
       const exprText = span.expression.getText(sourceFile);
 
       templateText +=
-        "${" +
-        i.toString().padStart(exprText.length, marker) +
-        "}" +
+        marker +
+        i.toString().padStart(exprText.length+1, filler) +
+        marker +
         span.literal.text;
     });
   }
@@ -195,146 +386,44 @@ export function getTemplateHTML(
   return preTemplate + templateText + postTemplate;
 }
 
-export function tokenizeTemplate(
-  ts: typeof import("typescript"),
-  sourceFile: ts.SourceFile,
-  template: ts.TemplateLiteral
-) {
-  return tokenize(getTemplateHTML(ts, sourceFile, template));
-}
-
-export function parseTemplate(
-  ts: typeof import("typescript"),
-  sourceFile: ts.SourceFile,
-  template: ts.TemplateLiteral
-) {
-  const html = getTemplateHTML(ts, sourceFile, template);
-  const ast = parse(html);
-  const nodes = parseNodes(ast);
-  // console.log(JSON.stringify(nodes,null,2))
-  return {
-    type: ROOT_NODE,
-    children: nodes,
-  };
-}
-
-//Non reactive text
-export const TEXT_NODE = 1;
-export type TextNode = {
-  type: typeof TEXT_NODE;
-  value: string;
-  start: number;
-  end: number;
-};
-
-//Non reactive Comment Node <!--value-->
-export const COMMENT_NODE = 2;
-export type CommentNode = {
-  type: typeof COMMENT_NODE;
-  value: string;
-  start: number;
-  end: number;
-};
-
-//Reactive Hole
-export const INSERT_NODE = 3;
-export type InsertNode = {
-  type: typeof INSERT_NODE;
-  value: number; //index of hole
-  start: number;
-  end: number;
-  expression: ts.Expression;
-};
-
-export const ELEMENT_NODE = 4;
-export type ElementNode = {
-  type: typeof ELEMENT_NODE;
-  name: string;
-  props: Property[];
-  children: ChildNode[];
-  node: ITag;
-};
-
-export const COMPONENT_NODE = 5;
-export type ComponentNode = {
-  type: typeof COMPONENT_NODE;
-  name: string;
-  props: Property[];
-  children: ChildNode[];
-  node: ITag;
-};
-
-export const ROOT_NODE = 6;
-export type RootNode = {
-  type: typeof ROOT_NODE;
-  children: ChildNode[];
-};
-
-export type ChildNode =
-  | TextNode
-  | ComponentNode
-  | ElementNode
-  | InsertNode
-  | CommentNode;
-
-export const BOOLEAN_PROP = 1;
-export type BooleanProp = {
-  type: typeof BOOLEAN_PROP;
-  name: string;
-  value: true;
-  attr: IAttribute;
-};
-export const STATIC_PROP = 2;
-export type StaticProp = {
-  type: typeof STATIC_PROP;
-  name: string;
-  value: string;
-  attr: IAttribute;
-};
-export const DYNAMIC_PROP = 3;
-export type DynamicProp = {
-  type: typeof DYNAMIC_PROP;
-  name: string;
-  value: number;
-  attr: IAttribute;
-};
-export const MIXED_PROP = 4;
-export type MixedProp = {
-  type: typeof MIXED_PROP;
-  name: string;
-  value: Array<string | number>;
-  attr: IAttribute;
-};
-export const SPREAD_PROP = 5;
-export type SpreadProp = {
-  type: typeof SPREAD_PROP;
-  name: "...";
-  value: number;
-  attr: IAttribute;
-};
-
-export type Property =
-  | BooleanProp
-  | StaticProp
-  | DynamicProp
-  | MixedProp
-  | SpreadProp;
-
-function parseNodes(nodes: INode[]) {
-  return nodes.flatMap(parseNode);
+function parseNodes(
+  nodes: INode[],
+  templateSpans: readonly ts.TemplateSpan[],
+  root: RootNode,
+  checker: ts.TypeChecker
+): ChildNode[] {
+  return nodes.flatMap((n) => parseNode(n, templateSpans, root, checker));
 }
 
 //Parse html5parser result for what we care about
-function parseNode(node: INode): ChildNode | ChildNode[] {
+function parseNode(
+  node: INode,
+  templateSpans: readonly ts.TemplateSpan[],
+  root: RootNode,
+  checker: ts.TypeChecker
+): ChildNode | ChildNode[] {
   //Text nodes are either static text or holes to insert in
   if (node.type === SyntaxKind.Text) {
-    const parts = getParts(node.value);
-    return parts.map((value, i) => {
-      const type = isString(value) ? TEXT_NODE : INSERT_NODE;
+    return node.value.split(match).flatMap((value, index, array) => {
+      if (index % 2 === 1) {
+        return {
+          type: INSERT_NODE,
+          start: node.start,
+          end: node.end,
+          expression: templateSpans?.[parseInt(value)].expression!,
+        };
+      }
+      //We want to trim when only content in textnode is the hole or if textnode is empty
+      if (!value || (array.length === 3 && !value.trim())) {
+        return [];
+      }
+
       return {
-        type,
+        type: TEXT_NODE,
         value,
-      } as InsertNode | TextNode;
+        start: node.start,
+        end: node.end,
+      };
     });
   }
 
@@ -342,82 +431,129 @@ function parseNode(node: INode): ChildNode | ChildNode[] {
   if (node.name[0] === "!" || node.name === "") {
     return {
       type: COMMENT_NODE,
-      value: (node.body as IText[]).reduce((p, v) => (p += v.value), ""),
+      value: (node.body as IText[]).join(""),
       start: node.start,
       end: node.end,
     } as CommentNode;
   }
 
-  const props = node.attributes.flatMap((attr) => {
-    const nameParts = getParts(attr.name.value);
+  const props = node.attributes.flatMap((v) => {
+    const nameParts = getParts(v.name.value);
 
     if (nameParts.length === 1) {
-      const part = nameParts[0];
-      if (isString(part)) {
-        const valueParts = getParts(attr.value?.value);
-        if (valueParts.length === 0) {
-          //boolean attribute <input disabled>
-          return {
-            type: BOOLEAN_PROP,
-            name: part,
-            value: true,
-            attr,
-          } as BooleanProp;
-        } else if (valueParts.length === 1) {
-          if (isString(valueParts[0])) {
-            return {
-              type: STATIC_PROP,
-              name: part,
-              value: valueParts[0],
-              attr,
-            } as StaticProp;
-          } else {
-            return {
-              type: DYNAMIC_PROP,
-              name: part,
-              value: valueParts[0],
-              attr,
-            } as DynamicProp;
-          }
-        } else {
-          //mixed static and dynamic attribute <input value="text ${} text ${} px">
-          return {
-            type: MIXED_PROP,
-            name: part,
-            value: valueParts,
-            attr,
-          } as MixedProp;
-        }
-      }
-    } else {
-      //name is mixed static and dynamic. We assume something like ...${} but could also be class${} or style${}. Value gets ignored in this case.
-      if (nameParts[0] === "...") {
+      const name = nameParts[0];
+      if (v.value === undefined) {
         return {
-          type: SPREAD_PROP,
-          name: "...",
-          value: nameParts[1],
-          attr,
-        } as SpreadProp;
+          name,
+          type: BOOLEAN_PROPERTY,
+          start: v.name.start,
+          end: v.name.end,
+        };
+      }
+
+      if (isNumber(name)) {
+        return {
+          type: ANONYMOUS_PROPERTY,
+          expression: templateSpans?.[name].expression!,
+          start: v.name.start,
+          end: v.name.end,
+        };
+      }
+
+      const valueParts = getParts(v.value?.value);
+
+      if (valueParts.length === 0) {
+        return {
+          name,
+          type: BOOLEAN_PROPERTY,
+        };
+      } else if (valueParts.length === 1) {
+        const value = valueParts[0];
+        if (isNumber(value)) {
+          return {
+            type: DYNAMIC_PROPERTY,
+            name,
+            expression: templateSpans?.[value].expression!,
+            start: v.name.start,
+            end: v.name.end,
+          };
+        } else {
+          return {
+            type: STRING_PROPERTY,
+            name,
+            value,
+            start: v.name.start,
+            end: v.name.end,
+            nameLocation: {
+              start: v.name.start,
+              end: v.name.end,
+            },
+            valueLocation: {
+              start: v.value.start,
+              end: v.value.end,
+            },
+          };
+        }
+      } else {
+        return {
+          type: MIXED_PROPERTY,
+          name,
+          value: valueParts,
+        };
       }
     }
+
+    //name is mixed static and dynamic. We only look for ...${}
+    if (nameParts[0] === "...") {
+      return {
+        type: SPREAD_PROPERTY,
+        start: v.name.start,
+        end: v.name.end,
+        expression: templateSpans?.[nameParts[1] as number].expression!,
+      };
+    }
+
     return [];
   }) as Property[];
 
-  const children = node.body?.flatMap(parseNode) ?? [];
+  const children = parseNodes(node.body ?? [], templateSpans, root, checker);
   const name = node.rawName as string;
+  const type = /^[A-Z]/.test(name) ? COMPONENT_NODE : ELEMENT_NODE;
+
+  let tsType: ts.Type | undefined = undefined;
+  if (type === COMPONENT_NODE) {
+    const sym = checker.getPropertyOfType(root.components, name);
+    tsType =
+      sym && checker.getTypeOfSymbolAtLocation(sym, sym.valueDeclaration!);
+  } else {
+    const sym = checker.getPropertyOfType(root.elements, name);
+    tsType =
+      sym && checker.getTypeOfSymbolAtLocation(sym, sym.valueDeclaration!);
+  }
 
   return {
-    type: /^[A-Z]/.test(name) ? COMPONENT_NODE : ELEMENT_NODE,
+    type,
     name,
     props,
     children,
-    node,
-  };
+    open: {
+      start: node.start,
+      end: node.open.end,
+    },
+    close: node.close && {
+      start: node.close.start,
+      end: node.close.end,
+    },
+    start: node.start,
+    end: node.end,
+    tsType,
+  } as ElementNode | ComponentNode;
 }
 
+// Splits a string into static parts and hole indexes
 function getParts(value: string = ""): Array<string | number> {
   return value
     .split(match)
-    .map((v, i) => (i % 2 === 1 ? Number(v) : v))
-    .filter((v) => isNumber(v) || v.trim());
+    .map((v, i) => (i % 2 === 1 ? parseInt(v) : v))
+    .filter((v) => isNumber(v) || v !== "");
 }
