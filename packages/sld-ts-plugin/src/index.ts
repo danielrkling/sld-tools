@@ -1,5 +1,4 @@
 import type * as ts from "typescript/lib/tsserverlibrary";
-import { getSLDTemplatesNodes } from "./parse";
 import { getFormattingEditsForDocument } from "./formatting";
 import { getCompletionsAtPosition } from "./completions";
 import { getSemanticDiagnostics } from "./diagnostics";
@@ -35,6 +34,7 @@ function init(modules: { typescript: typeof ts }) {
           )
         );
       },
+
 
       getQuickInfoAtPosition(fileName, position, maximumLength) {
         const program = info.languageService.getProgram();

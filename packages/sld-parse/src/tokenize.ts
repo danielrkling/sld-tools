@@ -1,501 +1,267 @@
-/*!
- *
- * Copyright 2017 - acrazing
- *
- * @author acrazing joking.young@gmail.com
- * @since 2017-08-19 00:54:29
- * @version 1.0.0
- * @desc tokenize.ts
- */
+export const OPEN_TAG_TOKEN = 0;
+export const CLOSE_TAG_TOKEN = 1;
+export const SLASH_TOKEN = 2;
+export const IDENTIFIER_TOKEN = 3;
+export const EQUALS_TOKEN = 4;
+export const ATTRIBUTE_VALUE_TOKEN = 5;
+export const TEXT_TOKEN = 6;
+export const EXPRESSION_TOKEN = 7;
+export const QUOTE_CHAR_TOKEN = 8;
+export const SPREAD_TOKEN = 9;
 
-export const enum State {
-  Literal,
-  BeforeOpenTag,
-  OpeningTag,
-  AfterOpenTag,
-  InValueNq,
-  InValueSq,
-  InValueDq,
-  ClosingOpenTag,
-  OpeningSpecial,
-  OpeningDoctype,
-  OpeningNormalComment,
-  InNormalComment,
-  InShortComment,
-  ClosingNormalComment,
-  ClosingTag,
-}
-
-export const enum TokenKind {
-  Literal,
-  OpenTag, // trim leading '<'
-  OpenTagEnd, // trim tailing '>', only could be '/' or ''
-  CloseTag, // trim leading '</' and tailing '>'
-  Whitespace, // the whitespace between attributes
-  AttrValueEq,
-  AttrValueNq,
-  AttrValueSq,
-  AttrValueDq,
-}
-
-export interface IToken {
-  start: number;
-  end: number;
-  value: string;
-  type: TokenKind;
-}
-
-let state: State;
-let buffer: string;
-let bufSize: number;
-let sectionStart: number;
-let index: number;
-let tokens: IToken[];
-let char: number;
-let inScript: boolean;
-let inStyle: boolean;
-let baseOffset: number;
-let relOffset: number; // internal temporary offset (index - sectionStart)
-
-function makeCodePoints(input: string) {
-  return {
-    lower: input
-      .toLowerCase()
-      .split('')
-      .map((c) => c.charCodeAt(0)),
-    upper: input
-      .toUpperCase()
-      .split('')
-      .map((c) => c.charCodeAt(0)),
-    length: input.length,
-  };
-}
-
-const doctype = makeCodePoints('!doctype');
-const style = makeCodePoints('style');
-const script = makeCodePoints('script');
-
-const enum Chars {
-  _S = 32, // ' '
-  _N = 10, // \n
-  _T = 9, // \t
-  _R = 13, // \r
-  _F = 12, // \f
-  Lt = 60, // <
-  Ep = 33, // !
-  Cl = 45, // -
-  Sl = 47, // /
-  Gt = 62, // >
-  Qm = 63, // ?
-  La = 97, // a
-  Lz = 122, // z
-  Ua = 65, // A
-  Uz = 90, // Z
-  Eq = 61, // =
-  Sq = 39, // '
-  Dq = 34, // "
-  Ld = 100, // d
-  Ud = 68, //D
-}
-
-function isWhiteSpace() {
+// Character code helpers for fast path testing (faster than regex)
+const isIdentifierChar = (code: number): boolean => {
   return (
-    char === Chars._S ||
-    char === Chars._N ||
-    char === Chars._T ||
-    char === Chars._T ||
-    char === Chars._R ||
-    char === Chars._F
+    isIdentifierStart(code) ||
+    (code >= 48 && code <= 58) || // 0-9, :
+    code === 46 || // .
+    code === 45
+  ); // -
+};
+
+const isIdentifierStart = (code: number): boolean => {
+  return (
+    (code >= 65 && code <= 90) || // A-Z
+    (code >= 97 && code <= 122) || // a-z
+    code === 95 || // _
+    code === 36 // $
   );
+};
+
+const isWhitespace = (code: number): boolean => {
+  return (code >= 9 && code <= 13) || code === 32; // \t \n \v \f \r space
+};
+
+export interface OpenTagToken {
+  type: typeof OPEN_TAG_TOKEN;
+  // value: "<";
 }
 
-function init(input: string, base = 0, initialState?: State) {
-  state = initialState === void 0 ? State.Literal : initialState;
-  buffer = input;
-  bufSize = input.length;
-  sectionStart = 0;
-  index = 0;
-  tokens = [];
-  inScript = false;
-  inStyle = false;
-  baseOffset = base | 0;
-  relOffset = 0;
+export interface CloseTagToken {
+  type: typeof CLOSE_TAG_TOKEN;
+  // value: ">";
 }
 
-export function tokenize(input: string, base = 0, initialState?: State): readonly [IToken[], number, State] {
-  init(input, base, initialState);
-  while (index < bufSize) {
-    char = buffer.charCodeAt(index);
-    switch (state) {
-      case State.Literal:
-        parseLiteral();
-        break;
-      case State.BeforeOpenTag:
-        parseBeforeOpenTag();
-        break;
-      case State.OpeningTag:
-        parseOpeningTag();
-        break;
-      case State.AfterOpenTag:
-        parseAfterOpenTag();
-        break;
-      case State.InValueNq:
-        parseInValueNq();
-        break;
-      case State.InValueSq:
-        parseInValueSq();
-        break;
-      case State.InValueDq:
-        parseInValueDq();
-        break;
-      case State.ClosingOpenTag:
-        parseClosingOpenTag();
-        break;
-      case State.OpeningSpecial:
-        parseOpeningSpecial();
-        break;
-      case State.OpeningDoctype:
-        parseOpeningDoctype();
-        break;
-      case State.OpeningNormalComment:
-        parseOpeningNormalComment();
-        break;
-      case State.InNormalComment:
-        parseNormalComment();
-        break;
-      case State.InShortComment:
-        parseShortComment();
-        break;
-      case State.ClosingNormalComment:
-        parseClosingNormalComment();
-        break;
-      case State.ClosingTag:
-        parseClosingTag();
-        break;
-      default:
-        unexpected();
-        break;
-    }
-    index++;
-  }
-  switch (state) {
-    case State.Literal:
-    case State.BeforeOpenTag:
-    case State.InValueNq:
-    case State.InValueSq:
-    case State.InValueDq:
-    case State.ClosingOpenTag:
-    case State.InNormalComment:
-    case State.InShortComment:
-    case State.ClosingNormalComment:
-      emitToken(TokenKind.Literal);
-      break;
-    case State.OpeningTag:
-      emitToken(TokenKind.OpenTag);
-      break;
-    case State.AfterOpenTag:
-      break;
-    case State.OpeningSpecial:
-      emitToken(TokenKind.OpenTag, State.InShortComment);
-      break;
-    case State.OpeningDoctype:
-      if (index - sectionStart === doctype.length) {
-        emitToken(TokenKind.OpenTag);
-      } else {
-        emitToken(TokenKind.OpenTag, void 0, sectionStart + 1);
-        emitToken(TokenKind.Literal);
+export interface SlashToken {
+  type: typeof SLASH_TOKEN;
+  // value: "/";
+}
+
+export interface IdentifierToken {
+  type: typeof IDENTIFIER_TOKEN;
+  value: string;
+}
+
+export interface EqualsToken {
+  type: typeof EQUALS_TOKEN;
+  // value: "=";
+}
+
+export interface AttributeToken {
+  type: typeof ATTRIBUTE_VALUE_TOKEN;
+  value: string;
+}
+
+export interface TextToken {
+  type: typeof TEXT_TOKEN;
+  value: string;
+}
+
+export interface ExpressionToken {
+  type: typeof EXPRESSION_TOKEN;
+  value: number;
+}
+
+export interface QuoteToken {
+  type: typeof QUOTE_CHAR_TOKEN;
+  value: "'" | '"';
+}
+
+export interface SpreadToken {
+  type: typeof SPREAD_TOKEN;
+  // value: "..."
+}
+
+export type Token =
+  | OpenTagToken
+  | CloseTagToken
+  | SlashToken
+  | IdentifierToken
+  | EqualsToken
+  | AttributeToken
+  | TextToken
+  | ExpressionToken
+  | QuoteToken
+  | SpreadToken;
+
+// Add a new state for elements that contain raw text only
+const STATE_TEXT = 0;
+const STATE_TAG = 1;
+const STATE_ATTR_VALUE = 2;
+const STATE_RAW_TEXT = 3;
+const STATE_COMMENT = 4;
+
+export const tokenize = (
+  strings: TemplateStringsArray | string[],
+  rawTextElements: Set<string>,
+): Token[] => {
+  const tokens: Token[] = [];
+  let state = STATE_TEXT;
+  let quoteChar: '"' | "'" | "" = "";
+  let lastTagName = "";
+  let cursor = 0;
+
+  for (let i = 0; i < strings.length; i++) {
+    const str = strings[i];
+    const len = str.length;
+    cursor = 0;
+
+    while (cursor < len) {
+      switch (state) {
+        case STATE_TEXT: {
+          lastTagName = "";
+          const nextTag = str.indexOf("<", cursor);
+          if (nextTag === -1) {
+            if (cursor < len) tokens.push({ type: TEXT_TOKEN, value: str.slice(cursor) });
+            cursor = len;
+          } else {
+            if (nextTag > cursor)
+              tokens.push({
+                type: TEXT_TOKEN,
+                value: str.slice(cursor, nextTag),
+              });
+
+            if (str[nextTag + 1] === "!" && str[nextTag + 2] === "-" && str[nextTag + 3] === "-") {
+              state = STATE_COMMENT;
+              cursor = nextTag + 4;
+            } else {
+              tokens.push({ type: OPEN_TAG_TOKEN });
+              state = STATE_TAG;
+              cursor = nextTag + 1;
+            }
+          }
+          break;
+        }
+        case STATE_TAG: {
+          const code = str.charCodeAt(cursor);
+
+          if (isWhitespace(code)) {
+            cursor++;
+          } else if (code === 62) {
+            // ">"
+            if (
+              rawTextElements.has(lastTagName) &&
+              tokens[tokens.length - 1]?.type !== SLASH_TOKEN
+            ) {
+              state = STATE_RAW_TEXT;
+            } else {
+              state = STATE_TEXT;
+              lastTagName = "";
+            }
+            tokens.push({ type: CLOSE_TAG_TOKEN });
+
+            cursor++;
+          } else if (code === 61) {
+            // "="
+            tokens.push({ type: EQUALS_TOKEN });
+            cursor++;
+          } else if (code === 47) {
+            // "/"
+            tokens.push({ type: SLASH_TOKEN });
+            cursor++;
+          } else if (code === 34 || code === 39) {
+            // '"' or "'"
+            const char = str[cursor] as "'" | '"';
+            tokens.push({ type: QUOTE_CHAR_TOKEN, value: char });
+            quoteChar = char;
+            state = STATE_ATTR_VALUE;
+            cursor++;
+          } else if (isIdentifierStart(code)) {
+            const start = cursor;
+            while (cursor < len && isIdentifierChar(str.charCodeAt(cursor))) cursor++;
+            const value = str.slice(start, cursor);
+            if (lastTagName === "") {
+              lastTagName = value;
+            }
+            tokens.push({ type: IDENTIFIER_TOKEN, value });
+          } else if (code === 46 && str[cursor + 1] === "." && str[cursor + 2] === ".") {
+            // "."
+            tokens.push({ type: SPREAD_TOKEN });
+            cursor += 3;
+          } else {
+            throw new Error(`Unexpected Character: ${str[cursor]}`);
+          }
+          break;
+        }
+        case STATE_ATTR_VALUE: {
+          const endQuoteIndex = str.indexOf(quoteChar, cursor);
+          if (endQuoteIndex === -1) {
+            tokens.push({
+              type: ATTRIBUTE_VALUE_TOKEN,
+              value: str.slice(cursor),
+            });
+            cursor = len;
+          } else {
+            if (endQuoteIndex > cursor) {
+              tokens.push({
+                type: ATTRIBUTE_VALUE_TOKEN,
+                value: str.slice(cursor, endQuoteIndex),
+              });
+            }
+            tokens.push({ type: QUOTE_CHAR_TOKEN, value: quoteChar as any });
+            state = STATE_TAG;
+            quoteChar = "";
+            cursor = endQuoteIndex + 1;
+          }
+          break;
+        }
+        case STATE_RAW_TEXT: {
+          // Case-sensitive search for the specific closing tag with optional whitespace in between, e.g. < / textarea >
+          const closeTagRegex = new RegExp(`<\\s*/\\s*${lastTagName}\\s*>`, "g");
+          closeTagRegex.lastIndex = cursor;
+          const match = closeTagRegex.exec(str);
+
+          if (match) {
+            const endOfRawIdx = match.index;
+            if (endOfRawIdx > cursor) {
+              tokens.push({
+                type: TEXT_TOKEN,
+                value: str.slice(cursor, endOfRawIdx),
+              });
+            }
+            state = STATE_TEXT;
+            cursor = endOfRawIdx;
+            lastTagName = "";
+          } else {
+            tokens.push({ type: TEXT_TOKEN, value: str.slice(cursor) });
+            cursor = len;
+          }
+          break;
+        }
+        case STATE_COMMENT: {
+          // LOOK FOR END OF COMMENT: - - >
+          const endComment = str.indexOf("-->", cursor);
+
+          if (endComment === -1) {
+            // If we don't find the closer in this string chunk,
+            // we consume the rest of the string and stay in STATE_COMMENT
+            cursor = len;
+          } else {
+            // Found it! Return to normal text parsing
+            state = STATE_TEXT;
+            cursor = endComment + 3;
+          }
+          break;
+        }
       }
-      break;
-    case State.OpeningNormalComment:
-      if (index - sectionStart === 2) {
-        emitToken(TokenKind.OpenTag);
-      } else {
-        emitToken(TokenKind.OpenTag, void 0, sectionStart + 1);
-        emitToken(TokenKind.Literal);
+    }
+
+    if (i < strings.length - 1) {
+      if (state !== STATE_COMMENT) {
+        tokens.push({ type: EXPRESSION_TOKEN, value: i });
       }
-      break;
-    case State.ClosingTag:
-      emitToken(TokenKind.CloseTag);
-      break;
-    default:
-      break;
-  }
-  const result = [tokens,relOffset,state] as const
-  init('', 0);
-  return result
-}
-
-function emitToken(kind: TokenKind, newState = state, end = index) {
-  let value = buffer.substring(sectionStart, end);
-  if (kind === TokenKind.OpenTag || kind === TokenKind.CloseTag) {
-    value = value.toLowerCase();
-  }
-  if (kind === TokenKind.OpenTag) {
-    if (value === 'script') {
-      inScript = true;
-    } else if (value === 'style') {
-      inStyle = true;
     }
   }
-  if (kind === TokenKind.CloseTag) {
-    inScript = inStyle = false;
-  }
-  if (!((kind === TokenKind.Literal || kind === TokenKind.Whitespace) && end === sectionStart)) {
-    // empty literal should be ignored
-    tokens.push({ type: kind, start: sectionStart + baseOffset, end: end + baseOffset, value });
-  }
-  if (kind === TokenKind.OpenTagEnd || kind === TokenKind.CloseTag) {
-    sectionStart = end + 1;
-    state = State.Literal;
-  } else {
-    sectionStart = end;
-    state = newState;
-  }
-}
 
-function parseLiteral() {
-  if (char === Chars.Lt) {
-    // <
-    emitToken(TokenKind.Literal, State.BeforeOpenTag);
-  }
-}
-
-function parseBeforeOpenTag() {
-  if (inScript || inStyle) {
-    if (char === Chars.Sl) {
-      state = State.ClosingTag;
-      sectionStart = index + 1;
-    } else {
-      state = State.Literal;
-    }
-    return;
-  }
-  if ((char >= Chars.La && char <= Chars.Lz) || (char >= Chars.Ua && char <= Chars.Uz)) {
-    // <d
-    state = State.OpeningTag;
-    sectionStart = index;
-  } else if (char === Chars.Sl) {
-    // </
-    state = State.ClosingTag;
-    sectionStart = index + 1;
-  } else if (char === Chars.Lt) {
-    // <<
-    emitToken(TokenKind.Literal);
-  } else if (char === Chars.Ep) {
-    // <!
-    state = State.OpeningSpecial;
-    sectionStart = index;
-  } else if (char === Chars.Qm) {
-    // <?
-    // treat as short comment
-    sectionStart = index;
-    emitToken(TokenKind.OpenTag, State.InShortComment);
-  } else {
-    // <>
-    // any other chars covert to normal state
-    state = State.Literal;
-  }
-}
-
-function parseOpeningTag() {
-  if (isWhiteSpace()) {
-    // <div ...
-    emitToken(TokenKind.OpenTag, State.AfterOpenTag);
-  } else if (char === Chars.Gt) {
-    // <div>
-    emitToken(TokenKind.OpenTag);
-    emitToken(TokenKind.OpenTagEnd);
-  } else if (char === Chars.Sl) {
-    // <div/
-    emitToken(TokenKind.OpenTag, State.ClosingOpenTag);
-  }
-}
-
-function parseAfterOpenTag() {
-  if (char === Chars.Gt) {
-    // <div >
-    emitToken(TokenKind.Whitespace);
-    emitToken(TokenKind.OpenTagEnd);
-  } else if (char === Chars.Sl) {
-    // <div /
-    emitToken(TokenKind.Whitespace, State.ClosingOpenTag);
-  } else if (char === Chars.Eq) {
-    // <div ...=...
-    emitToken(TokenKind.Whitespace);
-    emitToken(TokenKind.AttrValueEq, void 0, index + 1);
-  } else if (char === Chars.Sq) {
-    // <div ...'...
-    emitToken(TokenKind.Whitespace, State.InValueSq);
-  } else if (char === Chars.Dq) {
-    // <div ..."...
-    emitToken(TokenKind.Whitespace, State.InValueDq);
-  } else if (!isWhiteSpace()) {
-    // <div ...name...
-    emitToken(TokenKind.Whitespace, State.InValueNq);
-  }
-}
-
-function parseInValueNq() {
-  if (char === Chars.Gt) {
-    // <div xxx>
-    emitToken(TokenKind.AttrValueNq);
-    emitToken(TokenKind.OpenTagEnd);
-  } else if (char === Chars.Sl) {
-    // <div xxx/
-    emitToken(TokenKind.AttrValueNq, State.ClosingOpenTag);
-  } else if (char === Chars.Eq) {
-    // <div xxx=
-    emitToken(TokenKind.AttrValueNq);
-    emitToken(TokenKind.AttrValueEq, State.AfterOpenTag, index + 1);
-  } else if (isWhiteSpace()) {
-    // <div xxx ...
-    emitToken(TokenKind.AttrValueNq, State.AfterOpenTag);
-  }
-}
-
-function parseInValueSq() {
-  if (char === Chars.Sq) {
-    // <div 'xxx'
-    emitToken(TokenKind.AttrValueSq, State.AfterOpenTag, index + 1);
-  }
-}
-
-function parseInValueDq() {
-  if (char === Chars.Dq) {
-    // <div "xxx", problem same to Sq
-    emitToken(TokenKind.AttrValueDq, State.AfterOpenTag, index + 1);
-  }
-}
-
-function parseClosingOpenTag() {
-  if (char === Chars.Gt) {
-    // <div />
-    emitToken(TokenKind.OpenTagEnd);
-  } else {
-    // <div /...>
-    emitToken(TokenKind.AttrValueNq, State.AfterOpenTag);
-    parseAfterOpenTag();
-  }
-}
-
-function parseOpeningSpecial() {
-  switch (char) {
-    case Chars.Cl: // <!-
-      state = State.OpeningNormalComment;
-      break;
-    case Chars.Ld: // <!d
-    case Chars.Ud: // <!D
-      state = State.OpeningDoctype;
-      break;
-    default:
-      emitToken(TokenKind.OpenTag, State.InShortComment);
-      break;
-  }
-}
-
-function parseOpeningDoctype() {
-  relOffset = index - sectionStart;
-  if (relOffset === doctype.length) {
-    // <!d, <!d , start: 0, index: 2
-    if (isWhiteSpace()) {
-      emitToken(TokenKind.OpenTag, State.AfterOpenTag);
-    } else {
-      unexpected();
-    }
-  } else if (char === Chars.Gt) {
-    // <!DOCT>
-    emitToken(TokenKind.OpenTag, void 0, sectionStart + 1);
-    emitToken(TokenKind.Literal);
-    emitToken(TokenKind.OpenTagEnd);
-  } else if (doctype.lower[relOffset] !== char && doctype.upper[relOffset] !== char) {
-    // <!DOCX...
-    emitToken(TokenKind.OpenTag, State.InShortComment, sectionStart + 1);
-  }
-}
-
-function parseOpeningNormalComment() {
-  if (char === Chars.Cl) {
-    // <!--
-    emitToken(TokenKind.OpenTag, State.InNormalComment, index + 1);
-  } else {
-    emitToken(TokenKind.OpenTag, State.InShortComment, sectionStart + 1);
-  }
-}
-
-function parseNormalComment() {
-  if (char === Chars.Cl) {
-    // <!-- ... -
-    emitToken(TokenKind.Literal, State.ClosingNormalComment);
-  }
-}
-
-function parseShortComment() {
-  if (char === Chars.Gt) {
-    // <! ... >
-    emitToken(TokenKind.Literal);
-    emitToken(TokenKind.OpenTagEnd);
-  }
-}
-
-function parseClosingNormalComment() {
-  relOffset = index - sectionStart;
-  if (relOffset === 2) {
-    if (char === Chars.Gt) {
-      // <!-- xxx -->
-      emitToken(TokenKind.OpenTagEnd);
-    } else if (char === Chars.Cl) {
-      // <!-- xxx ---
-      emitToken(TokenKind.Literal, void 0, sectionStart + 1);
-    } else {
-      // <!-- xxx --x
-      state = State.InNormalComment;
-    }
-  } else if (char !== Chars.Cl) {
-    // <!-- xxx - ...
-    state = State.InNormalComment;
-  }
-}
-
-function parseClosingTag() {
-  relOffset = index - sectionStart;
-  if (inStyle) {
-    if (char === Chars.Lt) {
-      sectionStart -= 2;
-      emitToken(TokenKind.Literal, State.BeforeOpenTag);
-    } else if (relOffset < style.length) {
-      if (style.lower[relOffset] !== char && style.upper[relOffset] !== char) {
-        sectionStart -= 2;
-        state = State.Literal;
-      }
-    } else if (char === Chars.Gt) {
-      emitToken(TokenKind.CloseTag);
-    } else if (!isWhiteSpace()) {
-      sectionStart -= 2;
-      state = State.Literal;
-    }
-  } else if (inScript) {
-    if (char === Chars.Lt) {
-      sectionStart -= 2;
-      emitToken(TokenKind.Literal, State.BeforeOpenTag);
-    } else if (relOffset < script.length) {
-      if (script.lower[relOffset] !== char && script.upper[relOffset] !== char) {
-        sectionStart -= 2;
-        state = State.Literal;
-      }
-    } else if (char === Chars.Gt) {
-      emitToken(TokenKind.CloseTag);
-    } else if (!isWhiteSpace()) {
-      sectionStart -= 2;
-      state = State.Literal;
-    }
-  } else if (char === Chars.Gt) {
-    // </ xxx >
-    emitToken(TokenKind.CloseTag);
-  }
-}
-
-function unexpected() {
-  throw new SyntaxError(
-    `Unexpected token "${buffer.charAt(index)}" at ${index} when parse ${state}`,
-  );
-}
+  return tokens;
+};
