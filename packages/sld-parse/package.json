@@ -1,6 +1,13 @@
 {
-    "scripts": {
-        "test": "echo \"No tests specified\" && exit 0",
-        "tsc:watch": "tsc --watch"
-    }
+  "scripts": {
+    "test": "npx vitest run",
+    "test:watch": "npx vitest",
+    "tsc:watch": "tsc --watch"
+  },
+  "devDependencies": {
+    "vitest": "4.0.18"
+  },
+  "dependencies": {
+    "solid-js": "^1.9.11"
+  }
 }
