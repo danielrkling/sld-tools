@@ -1002,10 +1002,13 @@ describe("Advanced Parser Edge Cases", () => {
             type: ELEMENT_NODE,
             name: "div",
             props: [
-              { type: SPREAD_PROP, value: 0 },
-              { type: SPREAD_PROP, value: 1 },
+              { type: SPREAD_PROP, value: 0, spreadToken: { type: SPREAD_TOKEN, start: 5, end: 8 }, expressionToken: { type: EXPRESSION_TOKEN, value: 0, start: 8, end: 8 } },
+              { type: SPREAD_PROP, value: 1, spreadToken: { type: SPREAD_TOKEN, start: 9, end: 12 }, expressionToken: { type: EXPRESSION_TOKEN, value: 1, start: 12, end: 12 } },
             ],
             children: [],
+            open: { type: OPEN_TAG_TOKEN, start: 0, end: 1 },
+            nameToken: { type: IDENTIFIER_TOKEN, value: "div", start: 1, end: 4 },
+            close: { type: CLOSE_TAG_TOKEN, start: 12, end: 13 }
           },
         ],
       });
@@ -1022,11 +1025,14 @@ describe("Advanced Parser Edge Cases", () => {
             type: ELEMENT_NODE,
             name: "div",
             props: [
-              { name: "id", type: STATIC_PROP, value: "static", quote: '"' },
-              { type: SPREAD_PROP, value: 0 },
-              { name: "required", type: BOOLEAN_PROP, value: true },
+              { name: "id", type: STATIC_PROP, value: "static", quote: '"', nameToken: { type: IDENTIFIER_TOKEN, value: "id", start: 5, end: 7 }, equalsToken: { type: EQUALS_TOKEN, start: 7, end: 8 }, openQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 8, end: 9 }, valueTokens: [{ type: ATTRIBUTE_VALUE_TOKEN, value: "static", start: 9, end: 15 }], closeQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 15, end: 16 } },
+              { type: SPREAD_PROP, value: 0, spreadToken: { type: SPREAD_TOKEN, start: 17, end: 20 }, expressionToken: { type: EXPRESSION_TOKEN, value: 0, start: 20, end: 20 } },
+              { name: "required", type: BOOLEAN_PROP, value: true, nameToken: { type: IDENTIFIER_TOKEN, value: "required", start: 21, end: 29 } },
             ],
             children: [],
+            open: { type: OPEN_TAG_TOKEN, start: 0, end: 1 },
+            nameToken: { type: IDENTIFIER_TOKEN, value: "div", start: 1, end: 4 },
+            close: { type: CLOSE_TAG_TOKEN, start: 29, end: 30 }
           },
         ],
       });
@@ -1048,9 +1054,21 @@ describe("Advanced Parser Edge Cases", () => {
                 type: MIXED_PROP,
                 value: ["prefix-", 0, "-suffix"],
                 quote: '"',
+                nameToken: { type: IDENTIFIER_TOKEN, value: "class", start: 5, end: 10 },
+                equalsToken: { type: EQUALS_TOKEN, start: 10, end: 11 },
+                openQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 11, end: 12 },
+                valueTokens: [
+                  { type: ATTRIBUTE_VALUE_TOKEN, value: "prefix-", start: 12, end: 19 },
+                  { type: EXPRESSION_TOKEN, value: 0, start: 19, end: 19 },
+                  { type: ATTRIBUTE_VALUE_TOKEN, value: "-suffix", start: 19, end: 26 }
+                ],
+                closeQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 26, end: 27 }
               },
             ],
             children: [],
+            open: { type: OPEN_TAG_TOKEN, start: 0, end: 1 },
+            nameToken: { type: IDENTIFIER_TOKEN, value: "div", start: 1, end: 4 },
+            close: { type: CLOSE_TAG_TOKEN, start: 27, end: 28 }
           },
         ],
       });
