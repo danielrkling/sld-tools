@@ -15,11 +15,11 @@ const jsx =  <><input class={"Asdd  "} /> Hello World!
    <Badge  class="123" textValue="123">New</Badge>
    </>
    
-
+const jsxShow = <Show when={true} keyed={false} children={"123"} />
 const show = sld`<Show when=${true} keyed=${false} children=${"123"} />`
 
-const x = sld.define({ Message, Badge }).sld`
-   <input class=${"Asdd  "} asd > Hello World!</div>
+const x = sld`
+   <input class=${"Asdd  "} asd /> Hello World!
    <Badge  ></Badge>
    <div children> </div>
    <abbr ></abbr>

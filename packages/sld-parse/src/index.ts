@@ -162,7 +162,8 @@ export function parse<T = any>(
   ...values: T[]
 ): IRoot {
   const rawTextElements = new Set<string>();
-  const tokens = tokenize(Array.from(templates), rawTextElements);
+  const expressionLengths = values.map(v => v == null ? 0 : String(v).length);
+  const tokens = tokenize(Array.from(templates), rawTextElements, expressionLengths);
   
   const root: IRoot = {
     type: INodeType.Root,

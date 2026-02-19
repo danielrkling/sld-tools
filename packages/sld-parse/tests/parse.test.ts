@@ -421,17 +421,17 @@ describe("Attributes", () => {
               equalsToken: { type: EQUALS_TOKEN, start: 10, end: 11 },
               openQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 11, end: 12 },
               valueTokens: [
-                { type: EXPRESSION_TOKEN, value: 0, start: 12, end: 35 },
-                { type: ATTRIBUTE_VALUE_TOKEN, value: "  ", start: 35, end: 37 },
-                { type: EXPRESSION_TOKEN, value: 1, start: 37, end: 44 }
+                { type: EXPRESSION_TOKEN, value: 0, start: 12, end: 12 },
+                { type: ATTRIBUTE_VALUE_TOKEN, value: "  ", start: 12, end: 14 },
+                { type: EXPRESSION_TOKEN, value: 1, start: 14, end: 14 }
               ],
-              closeQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 44, end: 45 }
+              closeQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 14, end: 15 }
             },
           ],
           children: [],
           open: { type: OPEN_TAG_TOKEN, start: 0, end: 1 },
           nameToken: { type: IDENTIFIER_TOKEN, value: "div", start: 1, end: 4 },
-          close: { type: CLOSE_TAG_TOKEN, start: 45, end: 46 }
+          close: { type: CLOSE_TAG_TOKEN, start: 15, end: 16 }
         },
       ],
     });
@@ -439,8 +439,8 @@ describe("Attributes", () => {
 
   it("mixed attributes", () => {
     const ast = jsx`
-        <h1 title="${1} John ${"Smith"}"></h1>
-      `;
+    <h1 title="${1} John ${"Smith"}"></h1>
+  `;
     expect(ast).toEqual({
       type: ROOT_NODE,
       children: [
@@ -453,21 +453,21 @@ describe("Attributes", () => {
               type: MIXED_PROP,
               value: [0, " John ", 1],
               quote: '"',
-              nameToken: { type: IDENTIFIER_TOKEN, value: "title", start: 13, end: 18 },
-              equalsToken: { type: EQUALS_TOKEN, start: 18, end: 19 },
-              openQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 19, end: 20 },
+              nameToken: { type: IDENTIFIER_TOKEN, value: "title", start: 9, end: 14 },
+              equalsToken: { type: EQUALS_TOKEN, start: 14, end: 15 },
+              openQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 15, end: 16 },
               valueTokens: [
-                { type: EXPRESSION_TOKEN, value: 0, start: 20, end: 25 },
-                { type: ATTRIBUTE_VALUE_TOKEN, value: " John ", start: 25, end: 32 },
-                { type: EXPRESSION_TOKEN, value: 1, start: 32, end: 41 }
+                { type: EXPRESSION_TOKEN, value: 0, start: 16, end: 16 },
+                { type: ATTRIBUTE_VALUE_TOKEN, value: " John ", start: 16, end: 22 },
+                { type: EXPRESSION_TOKEN, value: 1, start: 22, end: 22 }
               ],
-              closeQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 41, end: 42 }
+              closeQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 22, end: 23 }
             },
           ],
           children: [],
-          open: { type: OPEN_TAG_TOKEN, start: 9, end: 10 },
-          nameToken: { type: IDENTIFIER_TOKEN, value: "h1", start: 10, end: 12 },
-          close: { type: CLOSE_TAG_TOKEN, start: 42, end: 43 }
+          open: { type: OPEN_TAG_TOKEN, start: 5, end: 6 },
+          nameToken: { type: IDENTIFIER_TOKEN, value: "h1", start: 6, end: 8 },
+          close: { type: CLOSE_TAG_TOKEN, start: 23, end: 24 }
         },
       ],
     });
@@ -500,20 +500,20 @@ describe("Attributes", () => {
               value: 0,
               nameToken: { type: IDENTIFIER_TOKEN, value: "value", start: 19, end: 24 },
               equalsToken: { type: EQUALS_TOKEN, start: 24, end: 25 },
-              expressionToken: { type: EXPRESSION_TOKEN, value: 0, start: 25, end: 32 }
+              expressionToken: { type: EXPRESSION_TOKEN, value: 0, start: 25, end: 25 }
             },
             { 
               name: "disabled", 
               type: BOOLEAN_PROP, 
               value: true,
-              nameToken: { type: IDENTIFIER_TOKEN, value: "disabled", start: 33, end: 41 }
+              nameToken: { type: IDENTIFIER_TOKEN, value: "disabled", start: 26, end: 34 }
             },
           ],
           children: [],
           open: { type: OPEN_TAG_TOKEN, start: 0, end: 1 },
           nameToken: { type: IDENTIFIER_TOKEN, value: "input", start: 1, end: 6 },
-          slash: { type: SLASH_TOKEN, start: 42, end: 43 },
-          close: { type: CLOSE_TAG_TOKEN, start: 43, end: 44 }
+          slash: { type: SLASH_TOKEN, start: 35, end: 36 },
+          close: { type: CLOSE_TAG_TOKEN, start: 36, end: 37 }
         },
       ],
     });
@@ -532,12 +532,12 @@ describe("Attributes", () => {
             type: SPREAD_PROP, 
             value: 0,
             spreadToken: { type: SPREAD_TOKEN, start: 5, end: 8 },
-            expressionToken: { type: EXPRESSION_TOKEN, value: 0, start: 8, end: 15 }
+            expressionToken: { type: EXPRESSION_TOKEN, value: 0, start: 8, end: 8 }
           }],
           children: [],
           open: { type: OPEN_TAG_TOKEN, start: 0, end: 1 },
           nameToken: { type: IDENTIFIER_TOKEN, value: "div", start: 1, end: 4 },
-          close: { type: CLOSE_TAG_TOKEN, start: 15, end: 16 }
+          close: { type: CLOSE_TAG_TOKEN, start: 8, end: 9 }
         },
       ],
     });
@@ -555,10 +555,10 @@ describe("whitespace handling", () => {
           type: ELEMENT_NODE,
           name: "div",
           props: [],
-          children: [{ type: TEXT_NODE, value: "   Hello   World   ", text: { type: TEXT_TOKEN, value: "   Hello   World   ", start: 14, end: 37 } }],
+          children: [{ type: TEXT_NODE, value: "   Hello   World   ", text: { type: TEXT_TOKEN, value: "   Hello   World   ", start: 13, end: 32 } }],
           open: { type: OPEN_TAG_TOKEN, start: 8, end: 9 },
           nameToken: { type: IDENTIFIER_TOKEN, value: "div", start: 9, end: 12 },
-          close: { type: CLOSE_TAG_TOKEN, start: 37, end: 38 }
+          close: { type: CLOSE_TAG_TOKEN, start: 12, end: 13 }
         },
         { type: TEXT_NODE, value: " !   ", text: { type: TEXT_TOKEN, value: " !   ", start: 38, end: 43 } },
       ],
@@ -576,10 +576,10 @@ describe("whitespace handling", () => {
           type: ELEMENT_NODE,
           name: "div",
           props: [],
-          children: [{ type: TEXT_NODE, value: "Hello World", text: { type: TEXT_TOKEN, value: "Hello World", start: 11, end: 22 } }],
+          children: [{ type: TEXT_NODE, value: "Hello World", text: { type: TEXT_TOKEN, value: "Hello World", start: 10, end: 21 } }],
           open: { type: OPEN_TAG_TOKEN, start: 5, end: 6 },
           nameToken: { type: IDENTIFIER_TOKEN, value: "div", start: 6, end: 9 },
-          close: { type: CLOSE_TAG_TOKEN, start: 22, end: 23 }
+          close: { type: CLOSE_TAG_TOKEN, start: 9, end: 10 }
         },
       ],
     });
@@ -594,10 +594,10 @@ describe("whitespace handling", () => {
           type: ELEMENT_NODE,
           name: "div",
           props: [],
-          children: [{ type: TEXT_NODE, value: "   Hello   World   ", text: { type: TEXT_TOKEN, value: "   Hello   World   ", start: 5, end: 28 } }],
+          children: [{ type: TEXT_NODE, value: "   Hello   World   ", text: { type: TEXT_TOKEN, value: "   Hello   World   ", start: 5, end: 24 } }],
           open: { type: OPEN_TAG_TOKEN, start: 0, end: 1 },
           nameToken: { type: IDENTIFIER_TOKEN, value: "div", start: 1, end: 4 },
-          close: { type: CLOSE_TAG_TOKEN, start: 28, end: 29 }
+          close: { type: CLOSE_TAG_TOKEN, start: 4, end: 5 }
         },
       ],
     });
@@ -622,21 +622,21 @@ describe("whitespace handling", () => {
        `,
               text: { type: TEXT_TOKEN, value: `
        Hello World
-       `, start: 5, end: 36 }
+       `, start: 5, end: 32 }
             },
             {
               type: ELEMENT_NODE,
               name: "span",
               props: [],
-              children: [{ type: TEXT_NODE, value: "!", text: { type: TEXT_TOKEN, value: "!", start: 42, end: 43 } }],
-              open: { type: OPEN_TAG_TOKEN, start: 36, end: 37 },
-              nameToken: { type: IDENTIFIER_TOKEN, value: "span", start: 37, end: 41 },
-              close: { type: CLOSE_TAG_TOKEN, start: 43, end: 44 }
+              children: [{ type: TEXT_NODE, value: "!", text: { type: TEXT_TOKEN, value: "!", start: 38, end: 39 } }],
+              open: { type: OPEN_TAG_TOKEN, start: 32, end: 33 },
+              nameToken: { type: IDENTIFIER_TOKEN, value: "span", start: 33, end: 37 },
+              close: { type: CLOSE_TAG_TOKEN, start: 37, end: 38 }
             },
           ],
           open: { type: OPEN_TAG_TOKEN, start: 0, end: 1 },
           nameToken: { type: IDENTIFIER_TOKEN, value: "div", start: 1, end: 4 },
-          close: { type: CLOSE_TAG_TOKEN, start: 50, end: 51 }
+          close: { type: CLOSE_TAG_TOKEN, start: 4, end: 5 }
         },
       ],
     });
@@ -653,13 +653,13 @@ describe("whitespace handling", () => {
           name: "div",
           props: [],
           children: [
-            { type: TEXT_NODE, value: "  Hello ", text: { type: TEXT_TOKEN, value: "  Hello ", start: 5, end: 12 } },
-            { type: EXPRESSION_NODE, value: 0, expression: { type: EXPRESSION_TOKEN, value: 0, start: 12, end: 19 } },
-            { type: TEXT_NODE, value: "  !  ", text: { type: TEXT_TOKEN, value: "  !  ", start: 19, end: 24 } },
+            { type: TEXT_NODE, value: "  Hello ", text: { type: TEXT_TOKEN, value: "  Hello ", start: 5, end: 13 } },
+            { type: EXPRESSION_NODE, value: 0, expression: { type: EXPRESSION_TOKEN, value: 0, start: 13, end: 13 } },
+            { type: TEXT_NODE, value: "  !  ", text: { type: TEXT_TOKEN, value: "  !  ", start: 13, end: 18 } },
           ],
           open: { type: OPEN_TAG_TOKEN, start: 0, end: 1 },
           nameToken: { type: IDENTIFIER_TOKEN, value: "div", start: 1, end: 4 },
-          close: { type: CLOSE_TAG_TOKEN, start: 24, end: 25 }
+          close: { type: CLOSE_TAG_TOKEN, start: 4, end: 5 }
         },
       ],
     });
@@ -677,10 +677,10 @@ describe("whitespace handling", () => {
           type: ELEMENT_NODE,
           name: "div",
           props: [],
-          children: [{ type: EXPRESSION_NODE, value: 0, expression: { type: EXPRESSION_TOKEN, value: 0, start: 11, end: 18 } }],
+          children: [{ type: EXPRESSION_NODE, value: 0, expression: { type: EXPRESSION_TOKEN, value: 0, start: 12, end: 12 } }],
           open: { type: OPEN_TAG_TOKEN, start: 0, end: 1 },
           nameToken: { type: IDENTIFIER_TOKEN, value: "div", start: 1, end: 4 },
-          close: { type: CLOSE_TAG_TOKEN, start: 23, end: 24 }
+          close: { type: CLOSE_TAG_TOKEN, start: 4, end: 5 }
         },
       ],
     });
@@ -700,12 +700,12 @@ describe("whitespace handling", () => {
         {
           type: EXPRESSION_NODE,
           value: 0,
-          expression: { type: EXPRESSION_TOKEN, value: 0, start: 3, end: 10 },
+          expression: { type: EXPRESSION_TOKEN, value: 0, start: 3, end: 3 },
         },
         {
           type: TEXT_NODE,
           value: "   ",
-          text: { type: TEXT_TOKEN, value: "   ", start: 10, end: 13 },
+          text: { type: TEXT_TOKEN, value: "   ", start: 3, end: 6 },
         },
       ],
     });
@@ -722,14 +722,14 @@ describe("whitespace handling", () => {
           name: "div",
           props: [],
           children: [
-            { type: EXPRESSION_NODE, value: 0, expression: { type: EXPRESSION_TOKEN, value: 0, start: 7, end: 16 } },
-            { type: TEXT_NODE, value: "  ", text: { type: TEXT_TOKEN, value: "  ", start: 16, end: 18 } },
-            { type: EXPRESSION_NODE, value: 1, expression: { type: EXPRESSION_TOKEN, value: 1, start: 18, end: 25 } },
-            { type: TEXT_NODE, value: "  !  ", text: { type: TEXT_TOKEN, value: "  !  ", start: 25, end: 30 } },
+            { type: EXPRESSION_NODE, value: 0, expression: { type: EXPRESSION_TOKEN, value: 0, start: 7, end: 7 } },
+            { type: TEXT_NODE, value: "  ", text: { type: TEXT_TOKEN, value: "  ", start: 7, end: 9 } },
+            { type: EXPRESSION_NODE, value: 1, expression: { type: EXPRESSION_TOKEN, value: 1, start: 9, end: 9 } },
+            { type: TEXT_NODE, value: "  !  ", text: { type: TEXT_TOKEN, value: "  !  ", start: 9, end: 14 } },
           ],
           open: { type: OPEN_TAG_TOKEN, start: 0, end: 1 },
           nameToken: { type: IDENTIFIER_TOKEN, value: "div", start: 1, end: 4 },
-          close: { type: CLOSE_TAG_TOKEN, start: 30, end: 31 }
+          close: { type: CLOSE_TAG_TOKEN, start: 4, end: 5 }
         },
       ],
     });
@@ -758,39 +758,39 @@ describe("Complex Examples", () => {
             type: STATIC_PROP, 
             value: "root", 
             quote: '"',
-            nameToken: { type: IDENTIFIER_TOKEN, value: "id", start: 11, end: 13 },
-            equalsToken: { type: EQUALS_TOKEN, start: 13, end: 14 },
-            openQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 14, end: 15 },
-            valueTokens: [{ type: ATTRIBUTE_VALUE_TOKEN, value: "root", start: 15, end: 19 }],
-            closeQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 19, end: 20 }
+            nameToken: { type: IDENTIFIER_TOKEN, value: "id", start: 12, end: 14 },
+            equalsToken: { type: EQUALS_TOKEN, start: 14, end: 15 },
+            openQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 15, end: 16 },
+            valueTokens: [{ type: ATTRIBUTE_VALUE_TOKEN, value: "root", start: 16, end: 20 }],
+            closeQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 20, end: 21 }
           }],
           children: [
             {
               type: ELEMENT_NODE,
               name: "h1",
               props: [],
-              children: [{ type: EXPRESSION_NODE, value: 0, expression: { type: EXPRESSION_TOKEN, value: 0, start: 26, end: 33 } }],
-              open: { type: OPEN_TAG_TOKEN, start: 21, end: 22 },
-              nameToken: { type: IDENTIFIER_TOKEN, value: "h1", start: 22, end: 24 },
-              close: { type: CLOSE_TAG_TOKEN, start: 33, end: 34 }
+              children: [{ type: EXPRESSION_NODE, value: 0, expression: { type: EXPRESSION_TOKEN, value: 0, start: 35, end: 35 } }],
+              open: { type: OPEN_TAG_TOKEN, start: 31, end: 32 },
+              nameToken: { type: IDENTIFIER_TOKEN, value: "h1", start: 32, end: 34 },
+              close: { type: CLOSE_TAG_TOKEN, start: 34, end: 35 }
             },
             {
               type: ELEMENT_NODE,
               name: "p",
               props: [],
               children: [
-                { type: EXPRESSION_NODE, value: 1, expression: { type: EXPRESSION_TOKEN, value: 1, start: 38, end: 47 } },
-                { type: TEXT_NODE, value: " - ", text: { type: TEXT_TOKEN, value: " - ", start: 47, end: 51 } },
-                { type: EXPRESSION_NODE, value: 2, expression: { type: EXPRESSION_TOKEN, value: 2, start: 51, end: 58 } },
+                { type: EXPRESSION_NODE, value: 1, expression: { type: EXPRESSION_TOKEN, value: 1, start: 52, end: 52 } },
+                { type: TEXT_NODE, value: " - ", text: { type: TEXT_TOKEN, value: " - ", start: 52, end: 55 } },
+                { type: EXPRESSION_NODE, value: 2, expression: { type: EXPRESSION_TOKEN, value: 2, start: 55, end: 55 } },
               ],
-              open: { type: OPEN_TAG_TOKEN, start: 35, end: 36 },
-              nameToken: { type: IDENTIFIER_TOKEN, value: "p", start: 36, end: 37 },
-              close: { type: CLOSE_TAG_TOKEN, start: 58, end: 59 }
+              open: { type: OPEN_TAG_TOKEN, start: 49, end: 50 },
+              nameToken: { type: IDENTIFIER_TOKEN, value: "p", start: 50, end: 51 },
+              close: { type: CLOSE_TAG_TOKEN, start: 51, end: 52 }
             },
           ],
           open: { type: OPEN_TAG_TOKEN, start: 7, end: 8 },
           nameToken: { type: IDENTIFIER_TOKEN, value: "div", start: 8, end: 11 },
-          close: { type: CLOSE_TAG_TOKEN, start: 64, end: 65 }
+          close: { type: CLOSE_TAG_TOKEN, start: 21, end: 22 }
         },
       ],
     });
@@ -817,33 +817,33 @@ describe("Complex Examples", () => {
               type: ELEMENT_NODE,
               name: "li",
               props: [],
-              children: [{ type: EXPRESSION_NODE, value: 0, expression: { type: EXPRESSION_TOKEN, value: 0, start: 21, end: 32 } }],
-              open: { type: OPEN_TAG_TOKEN, start: 15, end: 16 },
-              nameToken: { type: IDENTIFIER_TOKEN, value: "li", start: 16, end: 18 },
-              close: { type: CLOSE_TAG_TOKEN, start: 32, end: 33 }
+              children: [{ type: EXPRESSION_NODE, value: 0, expression: { type: EXPRESSION_TOKEN, value: 0, start: 24, end: 24 } }],
+              open: { type: OPEN_TAG_TOKEN, start: 20, end: 21 },
+              nameToken: { type: IDENTIFIER_TOKEN, value: "li", start: 21, end: 23 },
+              close: { type: CLOSE_TAG_TOKEN, start: 23, end: 24 }
             },
             {
               type: ELEMENT_NODE,
               name: "li",
               props: [],
-              children: [{ type: EXPRESSION_NODE, value: 1, expression: { type: EXPRESSION_TOKEN, value: 1, start: 43, end: 54 } }],
-              open: { type: OPEN_TAG_TOKEN, start: 37, end: 38 },
-              nameToken: { type: IDENTIFIER_TOKEN, value: "li", start: 38, end: 40 },
-              close: { type: CLOSE_TAG_TOKEN, start: 54, end: 55 }
+              children: [{ type: EXPRESSION_NODE, value: 1, expression: { type: EXPRESSION_TOKEN, value: 1, start: 42, end: 42 } }],
+              open: { type: OPEN_TAG_TOKEN, start: 38, end: 39 },
+              nameToken: { type: IDENTIFIER_TOKEN, value: "li", start: 39, end: 41 },
+              close: { type: CLOSE_TAG_TOKEN, start: 41, end: 42 }
             },
             {
               type: ELEMENT_NODE,
               name: "li",
               props: [],
-              children: [{ type: EXPRESSION_NODE, value: 2, expression: { type: EXPRESSION_TOKEN, value: 2, start: 65, end: 76 } }],
-              open: { type: OPEN_TAG_TOKEN, start: 59, end: 60 },
-              nameToken: { type: IDENTIFIER_TOKEN, value: "li", start: 60, end: 62 },
-              close: { type: CLOSE_TAG_TOKEN, start: 76, end: 77 }
+              children: [{ type: EXPRESSION_NODE, value: 2, expression: { type: EXPRESSION_TOKEN, value: 2, start: 60, end: 60 } }],
+              open: { type: OPEN_TAG_TOKEN, start: 56, end: 57 },
+              nameToken: { type: IDENTIFIER_TOKEN, value: "li", start: 57, end: 59 },
+              close: { type: CLOSE_TAG_TOKEN, start: 59, end: 60 }
             },
           ],
           open: { type: OPEN_TAG_TOKEN, start: 7, end: 8 },
           nameToken: { type: IDENTIFIER_TOKEN, value: "ul", start: 8, end: 10 },
-          close: { type: CLOSE_TAG_TOKEN, start: 82, end: 83 }
+          close: { type: CLOSE_TAG_TOKEN, start: 10, end: 11 }
         },
       ],
     });
@@ -852,7 +852,6 @@ describe("Complex Examples", () => {
 
 describe("Specialized Element AST", () => {
   it("void elements: children", () => {
-    // Note: br is void, img is void. They should be siblings, not nested.
     const ast = jsx`<div><img src="test.png" >Children should get <span>wiped</span></img></div>`;
 
     expect(ast).toEqual({
@@ -872,18 +871,28 @@ describe("Specialized Element AST", () => {
                   type: STATIC_PROP,
                   value: "test.png",
                   quote: '"',
+                  nameToken: { type: IDENTIFIER_TOKEN, value: "src", start: 10, end: 13 },
+                  equalsToken: { type: EQUALS_TOKEN, start: 13, end: 14 },
+                  openQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 14, end: 15 },
+                  valueTokens: [{ type: ATTRIBUTE_VALUE_TOKEN, value: "test.png", start: 15, end: 23 }],
+                  closeQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 23, end: 24 }
                 },
               ],
               children: [],
+              open: { type: OPEN_TAG_TOKEN, start: 5, end: 6 },
+              nameToken: { type: IDENTIFIER_TOKEN, value: "img", start: 6, end: 9 },
+              close: { type: CLOSE_TAG_TOKEN, start: 25, end: 26 }
             },
           ],
+          open: { type: OPEN_TAG_TOKEN, start: 0, end: 1 },
+          nameToken: { type: IDENTIFIER_TOKEN, value: "div", start: 1, end: 4 },
+          close: { type: CLOSE_TAG_TOKEN, start: 4, end: 5 }
         },
       ],
     });
   });
 
   it("raw text elements: textarea ignoring content", () => {
-    // The content inside <textarea> is treated as a single TEXT_NODE
     const ast = jsx`<textarea><div class="fake">${0}</div></textarea>`;
 
     expect(ast).toEqual({
@@ -897,13 +906,18 @@ describe("Specialized Element AST", () => {
             {
               type: TEXT_NODE,
               value: '<div class="fake">',
+              text: { type: TEXT_TOKEN, value: '<div class="fake">', start: 10, end: 28 }
             },
-            { type: EXPRESSION_NODE, value: 0 },
+            { type: EXPRESSION_NODE, value: 0, expression: { type: EXPRESSION_TOKEN, value: 0, start: 28, end: 28 } },
             {
               type: TEXT_NODE,
               value: "</div>",
+              text: { type: TEXT_TOKEN, value: "</div>", start: 28, end: 34 }
             },
           ],
+          open: { type: OPEN_TAG_TOKEN, start: 0, end: 1 },
+          nameToken: { type: IDENTIFIER_TOKEN, value: "textarea", start: 1, end: 9 },
+          close: { type: CLOSE_TAG_TOKEN, start: 9, end: 10 }
         },
       ],
     });
@@ -923,16 +937,29 @@ describe("Specialized Element AST", () => {
             {
               name: "class",
               type: MIXED_PROP,
-              value: ["btn ", 0], // 0 is index of 'theme' in expressions
+              value: ["btn ", 0],
               quote: '"',
+              nameToken: { type: IDENTIFIER_TOKEN, value: "class", start: 7, end: 12 },
+              equalsToken: { type: EQUALS_TOKEN, start: 12, end: 13 },
+              openQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 13, end: 14 },
+              valueTokens: [
+                { type: ATTRIBUTE_VALUE_TOKEN, value: "btn ", start: 14, end: 18 },
+                { type: EXPRESSION_TOKEN, value: 0, start: 18, end: 18 }
+              ],
+              closeQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 18, end: 19 }
             },
             {
               name: "disabled",
               type: BOOLEAN_PROP,
               value: true,
+              nameToken: { type: IDENTIFIER_TOKEN, value: "disabled", start: 20, end: 28 }
             },
           ],
-          children: [], // Input is self-closing/void
+          children: [],
+          open: { type: OPEN_TAG_TOKEN, start: 0, end: 1 },
+          nameToken: { type: IDENTIFIER_TOKEN, value: "input", start: 1, end: 6 },
+          slash: { type: SLASH_TOKEN, start: 29, end: 30 },
+          close: { type: CLOSE_TAG_TOKEN, start: 30, end: 31 }
         },
       ],
     });
@@ -1093,9 +1120,21 @@ describe("Advanced Parser Edge Cases", () => {
                 type: MIXED_PROP,
                 value: [0, " ", 1],
                 quote: '"',
+                nameToken: { type: IDENTIFIER_TOKEN, value: "title", start: 5, end: 10 },
+                equalsToken: { type: EQUALS_TOKEN, start: 10, end: 11 },
+                openQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 11, end: 12 },
+                valueTokens: [
+                  { type: EXPRESSION_TOKEN, value: 0, start: 12, end: 12 },
+                  { type: ATTRIBUTE_VALUE_TOKEN, value: " ", start: 12, end: 13 },
+                  { type: EXPRESSION_TOKEN, value: 1, start: 13, end: 13 }
+                ],
+                closeQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 13, end: 14 }
               },
             ],
             children: [],
+            open: { type: OPEN_TAG_TOKEN, start: 0, end: 1 },
+            nameToken: { type: IDENTIFIER_TOKEN, value: "div", start: 1, end: 4 },
+            close: { type: CLOSE_TAG_TOKEN, start: 14, end: 15 }
           },
         ],
       });
@@ -1118,9 +1157,20 @@ describe("Advanced Parser Edge Cases", () => {
                 type: MIXED_PROP,
                 value: [0, 1],
                 quote: '"',
+                nameToken: { type: IDENTIFIER_TOKEN, value: "class", start: 5, end: 10 },
+                equalsToken: { type: EQUALS_TOKEN, start: 10, end: 11 },
+                openQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 11, end: 12 },
+                valueTokens: [
+                  { type: EXPRESSION_TOKEN, value: 0, start: 12, end: 12 },
+                  { type: EXPRESSION_TOKEN, value: 1, start: 12, end: 12 }
+                ],
+                closeQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 12, end: 13 }
               },
             ],
             children: [],
+            open: { type: OPEN_TAG_TOKEN, start: 0, end: 1 },
+            nameToken: { type: IDENTIFIER_TOKEN, value: "div", start: 1, end: 4 },
+            close: { type: CLOSE_TAG_TOKEN, start: 13, end: 14 }
           },
         ],
       });
@@ -1143,9 +1193,20 @@ describe("Advanced Parser Edge Cases", () => {
                 type: MIXED_PROP,
                 value: [0, 1],
                 quote: '"',
+                nameToken: { type: IDENTIFIER_TOKEN, value: "class", start: 5, end: 10 },
+                equalsToken: { type: EQUALS_TOKEN, start: 10, end: 11 },
+                openQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 11, end: 12 },
+                valueTokens: [
+                  { type: EXPRESSION_TOKEN, value: 0, start: 12, end: 12 },
+                  { type: EXPRESSION_TOKEN, value: 1, start: 12, end: 12 }
+                ],
+                closeQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 12, end: 13 }
               },
             ],
             children: [],
+            open: { type: OPEN_TAG_TOKEN, start: 0, end: 1 },
+            nameToken: { type: IDENTIFIER_TOKEN, value: "div", start: 1, end: 4 },
+            close: { type: CLOSE_TAG_TOKEN, start: 13, end: 14 }
           },
         ],
       });
@@ -1162,8 +1223,23 @@ describe("Advanced Parser Edge Cases", () => {
           {
             type: ELEMENT_NODE,
             name: "my-custom-element",
-            props: [{ name: "attr", type: STATIC_PROP, value: "value", quote: '"' }],
+            props: [
+              {
+                name: "attr",
+                type: STATIC_PROP,
+                value: "value",
+                quote: '"',
+                nameToken: { type: IDENTIFIER_TOKEN, value: "attr", start: 19, end: 23 },
+                equalsToken: { type: EQUALS_TOKEN, start: 23, end: 24 },
+                openQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 24, end: 25 },
+                valueTokens: [{ type: ATTRIBUTE_VALUE_TOKEN, value: "value", start: 25, end: 30 }],
+                closeQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 30, end: 31 }
+              }
+            ],
             children: [],
+            open: { type: OPEN_TAG_TOKEN, start: 0, end: 1 },
+            nameToken: { type: IDENTIFIER_TOKEN, value: "my-custom-element", start: 1, end: 18 },
+            close: { type: CLOSE_TAG_TOKEN, start: 31, end: 32 }
           },
         ],
       });
@@ -1179,10 +1255,33 @@ describe("Advanced Parser Edge Cases", () => {
             type: ELEMENT_NODE,
             name: "svg:rect",
             props: [
-              { name: "x", type: STATIC_PROP, value: "10", quote: '"' },
-              { name: "y", type: STATIC_PROP, value: "20", quote: '"' },
+              {
+                name: "x",
+                type: STATIC_PROP,
+                value: "10",
+                quote: '"',
+                nameToken: { type: IDENTIFIER_TOKEN, value: "x", start: 10, end: 11 },
+                equalsToken: { type: EQUALS_TOKEN, start: 11, end: 12 },
+                openQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 12, end: 13 },
+                valueTokens: [{ type: ATTRIBUTE_VALUE_TOKEN, value: "10", start: 13, end: 15 }],
+                closeQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 15, end: 16 }
+              },
+              {
+                name: "y",
+                type: STATIC_PROP,
+                value: "20",
+                quote: '"',
+                nameToken: { type: IDENTIFIER_TOKEN, value: "y", start: 17, end: 18 },
+                equalsToken: { type: EQUALS_TOKEN, start: 18, end: 19 },
+                openQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 19, end: 20 },
+                valueTokens: [{ type: ATTRIBUTE_VALUE_TOKEN, value: "20", start: 20, end: 22 }],
+                closeQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 22, end: 23 }
+              },
             ],
             children: [],
+            open: { type: OPEN_TAG_TOKEN, start: 0, end: 1 },
+            nameToken: { type: IDENTIFIER_TOKEN, value: "svg:rect", start: 1, end: 9 },
+            close: { type: CLOSE_TAG_TOKEN, start: 23, end: 24 }
           },
         ],
       });
@@ -1208,11 +1307,22 @@ describe("Advanced Parser Edge Cases", () => {
                     type: ELEMENT_NODE,
                     name: "div",
                     props: [],
-                    children: [{ type: TEXT_NODE, value: "HTML content" }],
+                    children: [
+                      { type: TEXT_NODE, value: "HTML content", text: { type: TEXT_TOKEN, value: "HTML content", start: 25, end: 37 } }
+                    ],
+                    open: { type: OPEN_TAG_TOKEN, start: 20, end: 21 },
+                    nameToken: { type: IDENTIFIER_TOKEN, value: "div", start: 21, end: 24 },
+                    close: { type: CLOSE_TAG_TOKEN, start: 24, end: 25 }
                   },
                 ],
+                open: { type: OPEN_TAG_TOKEN, start: 5, end: 6 },
+                nameToken: { type: IDENTIFIER_TOKEN, value: "foreignObject", start: 6, end: 19 },
+                close: { type: CLOSE_TAG_TOKEN, start: 19, end: 20 }
               },
             ],
+            open: { type: OPEN_TAG_TOKEN, start: 0, end: 1 },
+            nameToken: { type: IDENTIFIER_TOKEN, value: "svg", start: 1, end: 4 },
+            close: { type: CLOSE_TAG_TOKEN, start: 4, end: 5 }
           },
         ],
       });
@@ -1228,11 +1338,11 @@ describe("Advanced Parser Edge Cases", () => {
       expect(ast).toEqual({
         type: ROOT_NODE,
         children: [
-          { type: EXPRESSION_NODE, value: 0 },
-          { type: EXPRESSION_NODE, value: 1 },
-          { type: EXPRESSION_NODE, value: 2 },
-          { type: EXPRESSION_NODE, value: 3 },
-          { type: EXPRESSION_NODE, value: 4 },
+          { type: EXPRESSION_NODE, value: 0, expression: { type: EXPRESSION_TOKEN, value: 0, start: 0, end: 0 } },
+          { type: EXPRESSION_NODE, value: 1, expression: { type: EXPRESSION_TOKEN, value: 1, start: 0, end: 0 } },
+          { type: EXPRESSION_NODE, value: 2, expression: { type: EXPRESSION_TOKEN, value: 2, start: 0, end: 0 } },
+          { type: EXPRESSION_NODE, value: 3, expression: { type: EXPRESSION_TOKEN, value: 3, start: 0, end: 0 } },
+          { type: EXPRESSION_NODE, value: 4, expression: { type: EXPRESSION_TOKEN, value: 4, start: 0, end: 0 } },
         ],
       });
     });
@@ -1247,7 +1357,12 @@ describe("Advanced Parser Edge Cases", () => {
             type: ELEMENT_NODE,
             name: "div",
             props: [],
-            children: [{ type: TEXT_NODE, value: "Use &lt; and &gt; for brackets" }],
+            children: [
+              { type: TEXT_NODE, value: "Use &lt; and &gt; for brackets", text: { type: TEXT_TOKEN, value: "Use &lt; and &gt; for brackets", start: 5, end: 35 } }
+            ],
+            open: { type: OPEN_TAG_TOKEN, start: 0, end: 1 },
+            nameToken: { type: IDENTIFIER_TOKEN, value: "div", start: 1, end: 4 },
+            close: { type: CLOSE_TAG_TOKEN, start: 4, end: 5 }
           },
         ],
       });
@@ -1263,7 +1378,12 @@ describe("Advanced Parser Edge Cases", () => {
             type: ELEMENT_NODE,
             name: "div",
             props: [],
-            children: [{ type: TEXT_NODE, value: "Copyright &#169; 2023" }],
+            children: [
+              { type: TEXT_NODE, value: "Copyright &#169; 2023", text: { type: TEXT_TOKEN, value: "Copyright &#169; 2023", start: 5, end: 26 } }
+            ],
+            open: { type: OPEN_TAG_TOKEN, start: 0, end: 1 },
+            nameToken: { type: IDENTIFIER_TOKEN, value: "div", start: 1, end: 4 },
+            close: { type: CLOSE_TAG_TOKEN, start: 4, end: 5 }
           },
         ],
       });
@@ -1328,10 +1448,34 @@ describe("Advanced Parser Edge Cases", () => {
             type: ELEMENT_NODE,
             name: "img",
             props: [
-              { name: "src", type: STATIC_PROP, value: "test.jpg", quote: '"' },
-              { name: "alt", type: STATIC_PROP, value: "Test Image", quote: '"' },
+              {
+                name: "src",
+                type: STATIC_PROP,
+                value: "test.jpg",
+                quote: '"',
+                nameToken: { type: IDENTIFIER_TOKEN, value: "src", start: 5, end: 8 },
+                equalsToken: { type: EQUALS_TOKEN, start: 8, end: 9 },
+                openQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 9, end: 10 },
+                valueTokens: [{ type: ATTRIBUTE_VALUE_TOKEN, value: "test.jpg", start: 10, end: 18 }],
+                closeQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 18, end: 19 }
+              },
+              {
+                name: "alt",
+                type: STATIC_PROP,
+                value: "Test Image",
+                quote: '"',
+                nameToken: { type: IDENTIFIER_TOKEN, value: "alt", start: 20, end: 23 },
+                equalsToken: { type: EQUALS_TOKEN, start: 23, end: 24 },
+                openQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 24, end: 25 },
+                valueTokens: [{ type: ATTRIBUTE_VALUE_TOKEN, value: "Test Image", start: 25, end: 35 }],
+                closeQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 35, end: 36 }
+              },
             ],
             children: [],
+            open: { type: OPEN_TAG_TOKEN, start: 0, end: 1 },
+            nameToken: { type: IDENTIFIER_TOKEN, value: "img", start: 1, end: 4 },
+            slash: { type: SLASH_TOKEN, start: 37, end: 38 },
+            close: { type: CLOSE_TAG_TOKEN, start: 38, end: 39 }
           },
         ],
       });
@@ -1348,6 +1492,9 @@ describe("Advanced Parser Edge Cases", () => {
             name: "br",
             props: [],
             children: [],
+            open: { type: OPEN_TAG_TOKEN, start: 0, end: 1 },
+            nameToken: { type: IDENTIFIER_TOKEN, value: "br", start: 1, end: 3 },
+            close: { type: CLOSE_TAG_TOKEN, start: 3, end: 4 }
           },
         ],
       });
@@ -1390,8 +1537,20 @@ describe("Advanced Parser Edge Cases", () => {
           {
             type: ELEMENT_NODE,
             name: "div",
-            props: [{ name: "on:click", type: EXPRESSION_PROP, value: 0 }],
+            props: [
+              {
+                name: "on:click",
+                type: EXPRESSION_PROP,
+                value: 0,
+                nameToken: { type: IDENTIFIER_TOKEN, value: "on:click", start: 5, end: 13 },
+                equalsToken: { type: EQUALS_TOKEN, start: 13, end: 14 },
+                expressionToken: { type: EXPRESSION_TOKEN, value: 0, start: 14, end: 14 }
+              }
+            ],
             children: [],
+            open: { type: OPEN_TAG_TOKEN, start: 0, end: 1 },
+            nameToken: { type: IDENTIFIER_TOKEN, value: "div", start: 1, end: 4 },
+            close: { type: CLOSE_TAG_TOKEN, start: 14, end: 15 }
           },
         ],
       });
@@ -1408,10 +1567,30 @@ describe("Advanced Parser Edge Cases", () => {
             type: ELEMENT_NODE,
             name: "input",
             props: [
-              { name: "prop:value", type: EXPRESSION_PROP, value: 0 },
-              { name: "attr:title", type: STATIC_PROP, value: "Title", quote: '"' },
+              {
+                name: "prop:value",
+                type: EXPRESSION_PROP,
+                value: 0,
+                nameToken: { type: IDENTIFIER_TOKEN, value: "prop:value", start: 7, end: 17 },
+                equalsToken: { type: EQUALS_TOKEN, start: 17, end: 18 },
+                expressionToken: { type: EXPRESSION_TOKEN, value: 0, start: 18, end: 18 }
+              },
+              {
+                name: "attr:title",
+                type: STATIC_PROP,
+                value: "Title",
+                quote: '"',
+                nameToken: { type: IDENTIFIER_TOKEN, value: "attr:title", start: 19, end: 29 },
+                equalsToken: { type: EQUALS_TOKEN, start: 29, end: 30 },
+                openQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 30, end: 31 },
+                valueTokens: [{ type: ATTRIBUTE_VALUE_TOKEN, value: "Title", start: 31, end: 36 }],
+                closeQuote: { type: QUOTE_CHAR_TOKEN, value: '"', start: 36, end: 37 }
+              },
             ],
             children: [],
+            open: { type: OPEN_TAG_TOKEN, start: 0, end: 1 },
+            nameToken: { type: IDENTIFIER_TOKEN, value: "input", start: 1, end: 6 },
+            close: { type: CLOSE_TAG_TOKEN, start: 37, end: 38 }
           },
         ],
       });
@@ -1427,8 +1606,20 @@ describe("Advanced Parser Edge Cases", () => {
           {
             type: ELEMENT_NODE,
             name: "div",
-            props: [{ name: "ref", type: EXPRESSION_PROP, value: 0 }],
+            props: [
+              {
+                name: "ref",
+                type: EXPRESSION_PROP,
+                value: 0,
+                nameToken: { type: IDENTIFIER_TOKEN, value: "ref", start: 5, end: 8 },
+                equalsToken: { type: EQUALS_TOKEN, start: 8, end: 9 },
+                expressionToken: { type: EXPRESSION_TOKEN, value: 0, start: 9, end: 9 }
+              }
+            ],
             children: [],
+            open: { type: OPEN_TAG_TOKEN, start: 0, end: 1 },
+            nameToken: { type: IDENTIFIER_TOKEN, value: "div", start: 1, end: 4 },
+            close: { type: CLOSE_TAG_TOKEN, start: 9, end: 10 }
           },
         ],
       });

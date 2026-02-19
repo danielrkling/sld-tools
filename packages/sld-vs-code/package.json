@@ -99,17 +99,21 @@
     ]
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
     "@types/vscode": "^1.70.0",
     "@vscode/test-web": "^0.0.73",
     "@vscode/vsce": "^3.6.0",
     "esbuild": "^0.25.9",
-    "sld-ts-plugin": "file:../sld-ts-plugin"
+    "sld-ts-plugin": "file:../sld-ts-plugin",
+    "sld-parse": "file:../sld-parse",
+    "vitest": "^2.0.0"
   },
   "scripts": {
     "build:web": "esbuild ./src/extension.ts --bundle --format=cjs --outfile=./dist/web/extension.js --external:vscode --minify",
-    "build": "esbuild ./src/extension.ts --bundle --format=cjs --outfile=./dist/extension.js --external:vscode --external:typescript --minify",
+    "build": "esbuild ./src/extension.ts --bundle --format=cjs --outfile=./dist/extension.js --external:vscode --external:typescript --bundle",
     "watch": "esbuild ./src/extension.ts --bundle --format=cjs --outfile=./dist/extension.js --external:vscode --watch",
     "prepublish": "npm run build",
-    "test": "vscode-test-web --extensionDevelopmentPath=. ./test"
+    "test": "vitest run",
+    "test:watch": "vitest"
   }
 }

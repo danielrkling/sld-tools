@@ -102,51 +102,6 @@ export interface SpreadToken {
   // value: "...";
 }
 
-export interface CloseTagToken {
-  type: typeof CLOSE_TAG_TOKEN;
-  // value: ">";
-}
-
-export interface SlashToken {
-  type: typeof SLASH_TOKEN;
-  // value: "/";
-}
-
-export interface IdentifierToken {
-  type: typeof IDENTIFIER_TOKEN;
-  value: string;
-}
-
-export interface EqualsToken {
-  type: typeof EQUALS_TOKEN;
-  // value: "=";
-}
-
-export interface AttributeToken {
-  type: typeof ATTRIBUTE_VALUE_TOKEN;
-  value: string;
-}
-
-export interface TextToken {
-  type: typeof TEXT_TOKEN;
-  value: string;
-}
-
-export interface ExpressionToken {
-  type: typeof EXPRESSION_TOKEN;
-  value: number;
-}
-
-export interface QuoteToken {
-  type: typeof QUOTE_CHAR_TOKEN;
-  value: "'" | '"';
-}
-
-export interface SpreadToken {
-  type: typeof SPREAD_TOKEN;
-  // value: "..."
-}
-
 export type Token =
   | OpenTagToken
   | CloseTagToken
@@ -169,7 +124,7 @@ const STATE_COMMENT = 4;
 export const tokenize = (
   strings: TemplateStringsArray | string[],
   rawTextElements: Set<string>,
-  interpolationStrings?: string[],
+  expressionLengths?: number[],
 ): Token[] => {
   const tokens: Token[] = [];
   let state = STATE_TEXT;
@@ -363,9 +318,11 @@ export const tokenize = (
 
     if (i < strings.length - 1) {
       if (state !== STATE_COMMENT) {
+        const exprLength = expressionLengths?.[i] ?? 0;
         const tokenStart = globalPosition + str.length;
-        const tokenEnd = globalPosition + str.length;
+        const tokenEnd = tokenStart + exprLength;
         tokens.push({ type: EXPRESSION_TOKEN, value: i, start: tokenStart, end: tokenEnd });
+        globalPosition += exprLength;
       }
     }
 
