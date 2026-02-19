@@ -22,7 +22,9 @@
   "browser": "./dist/web/extension.js",
   "activationEvents": [
     "onLanguage:javascript",
-    "onLanguage:typescript"
+    "onLanguage:javascriptreact",
+    "onLanguage:typescript",
+    "onLanguage:typescriptreact"
   ],
   "contributes": {
     "languages": [
@@ -88,13 +90,20 @@
       {
         "name": "sld-ts-plugin"
       }
+    ],
+    "commands": [
+      {
+        "command": "sld-tools.showStatus",
+        "title": "SLD Tools: Show Status"
+      }
     ]
   },
   "devDependencies": {
     "@types/vscode": "^1.70.0",
     "@vscode/test-web": "^0.0.73",
     "@vscode/vsce": "^3.6.0",
-    "esbuild": "^0.25.9"
+    "esbuild": "^0.25.9",
+    "sld-ts-plugin": "file:../sld-ts-plugin"
   },
   "scripts": {
     "build:web": "esbuild ./src/extension.ts --bundle --format=cjs --outfile=./dist/web/extension.js --external:vscode --minify",

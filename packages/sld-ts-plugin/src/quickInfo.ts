@@ -3,13 +3,10 @@ import {
   ChildNode,
   COMPONENT_NODE,
   ELEMENT_NODE,
-  getInfoAtPosition,
+  getNodeAtPosition,
   getSLDTemplatesNodes,
   getTemplateNodeAtPosition,
-  getTokenAtPosition,
-  parseTemplate,
 } from "./parse";
-import { TokenKind } from "html5parser";
 
 export function getQuickInfoAtPosition(
   ts: typeof import("typescript/lib/tsserverlibrary"),
@@ -21,31 +18,33 @@ export function getQuickInfoAtPosition(
   const sourceFile = program?.getSourceFile(fileName);
   if (!sourceFile) return;
 
-  const info = getInfoAtPosition(ts, checker, sourceFile, position);
+  const templateNode = getTemplateNodeAtPosition(ts, sourceFile, position);
+  if (!templateNode) return;
 
-  if (!info) return;
+  const info = getNodeAtPosition(ts, checker, sourceFile, position);
 
-  if (info.node.type === COMPONENT_NODE) {
-    if (info.part === "tag") {
-      return {
-        kind: ts.ScriptElementKind.classElement,
-        kindModifiers: "",
-        textSpan: {
-          start: info.node.node.open.start + 1,
-          length: info.node.name.length,
-        },
-        displayParts: [{ text: checker.typeToString(info.type), kind: "text" }],
-      };
-    } else if (info.part === "prop") {
-      return {
-        kind: ts.ScriptElementKind.classElement,
-        kindModifiers: "",
-        textSpan: {
-          start: info.prop?.attr.start + 1,
-          length: info.prop?.name.length,
-        },
-        displayParts: [{ text: checker.typeToString(info.type), kind: "text" }],
-      };
-    }
+  if (!info || !("type" in info)) return;
+  const node = info as ChildNode;
+
+  if (node.type === COMPONENT_NODE) {
+    return {
+      kind: ts.ScriptElementKind.classElement,
+      kindModifiers: "",
+      textSpan: {
+        start: node.open.start + 1,
+        length: node.name.length,
+      },
+      displayParts: [{ text: "Component", kind: "text" }],
+    };
+  } else if (node.type === ELEMENT_NODE) {
+    return {
+      kind: ts.ScriptElementKind.jsxAttribute,
+      kindModifiers: "",
+      textSpan: {
+        start: node.open.start + 1,
+        length: node.name.length,
+      },
+      displayParts: [{ text: "HTML Element", kind: "text" }],
+    };
   }
 }

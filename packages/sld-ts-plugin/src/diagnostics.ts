@@ -10,7 +10,6 @@ import {
   MIXED_PROPERTY,
   SPREAD_PROPERTY,
 } from "./parse";
-import { SyntaxKind } from "html5parser";
 
 export function getSemanticDiagnostics(
   ts: typeof import("typescript/lib/tsserverlibrary"),
@@ -35,12 +34,12 @@ export function getSemanticDiagnostics(
         if (fnType) {
           const propType = getTypeFromVirtualTypeLiteral(
             ts.factory.createTypeLiteralNode(
-              n.props.flatMap((prop) => {
-                if (prop.type === SPREAD_PROPERTY) {
+              n.props.flatMap((prop): ts.PropertySignature[] => {
+                if (prop.type === SPREAD_PROPERTY || prop.type === 6) {
                   return checker
                     .getTypeAtLocation(prop.expression)
                     .getProperties()
-                    .map((p) => {
+                    .map((p): ts.PropertySignature => {
                       const type = checker.typeToTypeNode(
                         checker.getTypeOfSymbolAtLocation(
                           p,
@@ -48,8 +47,13 @@ export function getSemanticDiagnostics(
                         ),
                         p.valueDeclaration!,
                         ts.NodeBuilderFlags.NoTruncation
+                      ) ?? ts.factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword);
+                      return ts.factory.createPropertySignature(
+                        undefined,
+                        p.name,
+                        undefined,
+                        type
                       );
-                      return type;
                     });
                 }
 
@@ -73,12 +77,12 @@ export function getSemanticDiagnostics(
                   );
                 }
 
-                return ts.factory.createPropertySignature(
+                return [ts.factory.createPropertySignature(
                   undefined,
                   prop.name,
                   undefined,
                   type
-                );
+                )];
               })
             ),
             program,

@@ -1,13 +1,14 @@
 import * as ts from "typescript/lib/tsserverlibrary";
 import {
-  IAttribute,
-  INode,
-  ITag,
+  IRoot,
+  IChild,
+  IElement,
   IText,
-  parse as html5parse,
-  SyntaxKind,
-  tokenize,
-} from "html5parser";
+  IInsert,
+  IProperty,
+  INodeType,
+  parse as sldParse,
+} from "sld-parse";
 import {
   getFunctionTypeFromTemplate,
   getPropertyTypeFromTemplate,
@@ -15,9 +16,6 @@ import {
 
 import { isNumber, isString } from "./util";
 
-//AST Node types
-
-//Non reactive text
 export const TEXT_NODE = 1;
 export type TextNode = {
   type: typeof TEXT_NODE;
@@ -26,7 +24,6 @@ export type TextNode = {
   end: number;
 };
 
-//Non reactive Comment Node <!--value-->
 export const COMMENT_NODE = 2;
 export type CommentNode = {
   type: typeof COMMENT_NODE;
@@ -35,7 +32,6 @@ export type CommentNode = {
   end: number;
 };
 
-//Reactive Hole
 export const INSERT_NODE = 3;
 export type InsertNode = {
   type: typeof INSERT_NODE;
@@ -44,7 +40,6 @@ export type InsertNode = {
   expression: ts.Expression;
 };
 
-//tag with lowercase first letter <div />
 export const ELEMENT_NODE = 4;
 export type ElementNode = {
   type: typeof ELEMENT_NODE;
@@ -64,7 +59,6 @@ export type ElementNode = {
   tsType: ts.Type | undefined;
 };
 
-//Tag with capital first letter <Div />
 export const COMPONENT_NODE = 5;
 export type ComponentNode = {
   type: typeof COMPONENT_NODE;
@@ -109,7 +103,6 @@ export type Property =
   | SpreadProperty
   | AnonymousProperty;
 
-// <input disabled>
 export const BOOLEAN_PROPERTY = 1;
 export type BooleanProperty = {
   type: typeof BOOLEAN_PROPERTY;
@@ -118,7 +111,6 @@ export type BooleanProperty = {
   end: number;
 };
 
-// <input value="myString"> <input value='myString'> <input value=""> <input value=''>
 export const STRING_PROPERTY = 2;
 export type StringProperty = {
   type: typeof STRING_PROPERTY;
@@ -136,7 +128,6 @@ export type StringProperty = {
   };
 };
 
-// <input value=${}> <input value="${}""> <input value='${}'>
 export const DYNAMIC_PROPERTY = 3;
 export type DynamicProperty = {
   type: typeof DYNAMIC_PROPERTY;
@@ -154,7 +145,6 @@ export type DynamicProperty = {
   end: number;
 };
 
-// <input value=" ${}"> <input value="input-${}"> <input value='${"value1"} ${"value2"}'>
 export const MIXED_PROPERTY = 4;
 export type MixedProperty = {
   type: typeof MIXED_PROPERTY;
@@ -173,7 +163,6 @@ export type MixedProperty = {
   end: number;
 };
 
-// <input ...${} />
 export const SPREAD_PROPERTY = 5;
 export type SpreadProperty = {
   type: typeof SPREAD_PROPERTY;
@@ -182,7 +171,6 @@ export type SpreadProperty = {
   end: number;
 };
 
-// <input ${} />
 export const ANONYMOUS_PROPERTY = 6;
 export type AnonymousProperty = {
   type: typeof ANONYMOUS_PROPERTY;
@@ -191,14 +179,7 @@ export type AnonymousProperty = {
   end: number;
 };
 
-//string or boolean means static, number means hole and is index, array means mix of string and holes
 export type ValueParts = string | boolean | number | Array<string | number>;
-
-//Needs to be unique character that would never be in the template literal
-const marker = "⧙";
-const filler = "�";
-//Captures index of hole
-const match = new RegExp(`${marker}${filler}*(\\d+)${marker}`, "g");
 
 export function getSLDTemplatesNodes(
   ts: typeof import("typescript"),
@@ -206,7 +187,6 @@ export function getSLDTemplatesNodes(
 ) {
   const nodes: ts.TaggedTemplateExpression[] = [];
   if (sourceFile) {
-    // Find all tagged template literals named "sld".
     ts.forEachChild(sourceFile, function visit(node) {
       if (ts.isTaggedTemplateExpression(node)) {
         const tagName = node.tag.getText(sourceFile);
@@ -241,7 +221,6 @@ export function getNodeAtPosition(
   const templateNode = getTemplateNodeAtPosition(ts, sourceFile, position);
   if (!templateNode) return;
   const root = parseSLDTemplate(ts, checker, sourceFile, templateNode);
-
   return getNodeInRootAtPosition(root, position);
 }
 
@@ -251,7 +230,7 @@ export function getNodeInRootAtPosition(
 ): ChildNode | undefined {
   let foundNode: ChildNode | undefined;
   root.children.forEach(findNode);
-  return foundNode;  
+  return foundNode;
   function findNode(node: ChildNode) {
     switch (node.type) {
       case TEXT_NODE:
@@ -318,10 +297,10 @@ export function parseSLDTemplate(
   sourceFile: ts.SourceFile,
   node: ts.TaggedTemplateExpression
 ): RootNode {
-  const html = getTemplateHTML(ts, sourceFile, node.template);
-  const ast = html5parse(html);
+  const templates = getTemplateStringsArray(ts, sourceFile, node.template);
+  const sldRoot = sldParse(templates);
+  
   let spans = [] as readonly ts.TemplateSpan[];
-
   if (ts.isTemplateExpression(node.template)) {
     spans = node.template.templateSpans;
   }
@@ -336,17 +315,217 @@ export function parseSLDTemplate(
     type.getProperty("elements")!,
     node
   );
-  const root = {
+  
+  const root: RootNode = {
     type: ROOT_NODE,
-    children: [] as ChildNode[],
+    children: [],
     start: node.getStart(sourceFile),
     end: node.getEnd(),
     components,
     elements,
-  } as RootNode;
-  root.children = parseNodes(ast, spans, root, checker);
-
+  };
+  
+  root.children = convertChildren(sldRoot.children, spans, root, checker, ts, sourceFile);
   return root;
+}
+
+function getTemplateStringsArray(
+  ts: typeof import("typescript"),
+  sourceFile: ts.SourceFile,
+  template: ts.TemplateLiteral
+): TemplateStringsArray {
+  const strings: string[] = [];
+  const rawStrings: string[] = [];
+  
+  if (ts.isNoSubstitutionTemplateLiteral(template)) {
+    strings.push(template.text);
+    rawStrings.push(template.text);
+  } else if (ts.isTemplateExpression(template)) {
+    strings.push(template.head.text);
+    rawStrings.push(template.head.text);
+    for (const span of template.templateSpans) {
+      strings.push(span.literal.text);
+      rawStrings.push(span.literal.text);
+    }
+  }
+  
+  return Object.assign(strings, { raw: rawStrings }) as TemplateStringsArray;
+}
+
+function convertChildren(
+  children: IChild[],
+  templateSpans: readonly ts.TemplateSpan[],
+  root: RootNode,
+  checker: ts.TypeChecker,
+  ts: typeof import("typescript"),
+  sourceFile: ts.SourceFile
+): ChildNode[] {
+  return children.flatMap((child) => convertNode(child, templateSpans, root, checker, ts, sourceFile));
+}
+
+function convertNode(
+  node: IChild,
+  templateSpans: readonly ts.TemplateSpan[],
+  root: RootNode,
+  checker: ts.TypeChecker,
+  ts: typeof import("typescript"),
+  sourceFile: ts.SourceFile
+): ChildNode | ChildNode[] {
+  switch (node.type) {
+    case INodeType.Text:
+      return {
+        type: TEXT_NODE,
+        value: node.value,
+        start: node.start,
+        end: node.end,
+      };
+    case INodeType.Insert:
+      return {
+        type: INSERT_NODE,
+        start: node.start,
+        end: node.end,
+        expression: templateSpans?.[node.index]?.expression!,
+      };
+    case INodeType.Comment:
+      return {
+        type: COMMENT_NODE,
+        value: node.value,
+        start: node.start,
+        end: node.end,
+      };
+    case INodeType.Element:
+      return convertElement(node, templateSpans, root, checker, ts, sourceFile);
+    default:
+      return [];
+  }
+}
+
+function convertElement(
+  node: IElement,
+  templateSpans: readonly ts.TemplateSpan[],
+  root: RootNode,
+  checker: ts.TypeChecker,
+  ts: typeof import("typescript"),
+  sourceFile: ts.SourceFile
+): ElementNode | ComponentNode {
+  const name = node.name.value;
+  const type = /^[A-Z]/.test(name) ? COMPONENT_NODE : ELEMENT_NODE;
+  
+  const props: Property[] = node.props.map((prop) => convertProperty(prop, templateSpans, ts, sourceFile));
+  const children = convertChildren(node.children, templateSpans, root, checker, ts, sourceFile);
+  
+  let tsType: ts.Type | undefined;
+  if (type === COMPONENT_NODE) {
+    const sym = checker.getPropertyOfType(root.components, name);
+    tsType = sym && checker.getTypeOfSymbolAtLocation(sym, sym.valueDeclaration!);
+  } else {
+    const sym = checker.getPropertyOfType(root.elements, name);
+    tsType = sym && checker.getTypeOfSymbolAtLocation(sym, sym.valueDeclaration!);
+  }
+  
+  return {
+    type,
+    name,
+    props,
+    children,
+    open: {
+      start: node.open.start,
+      end: node.open.end,
+    },
+    close: node.close ? {
+      start: node.close.start,
+      end: node.close.end,
+    } : null,
+    start: node.start,
+    end: node.end,
+    tsType,
+  };
+}
+
+function convertProperty(
+  prop: IProperty,
+  templateSpans: readonly ts.TemplateSpan[],
+  ts: typeof import("typescript"),
+  sourceFile: ts.SourceFile
+): Property {
+  const name = prop.name.value;
+  
+  switch (prop.type) {
+    case INodeType.BooleanProperty:
+      return {
+        type: BOOLEAN_PROPERTY,
+        name,
+        start: prop.start,
+        end: prop.end,
+      };
+    case INodeType.StringProperty:
+      return {
+        type: STRING_PROPERTY,
+        name,
+        value: prop.value,
+        start: prop.start,
+        end: prop.end,
+        nameLocation: {
+          start: prop.name.start,
+          end: prop.name.end,
+        },
+        valueLocation: {
+          start: prop.start,
+          end: prop.end,
+        },
+      };
+    case INodeType.DynamicProperty:
+      return {
+        type: DYNAMIC_PROPERTY,
+        name,
+        nameLocation: {
+          start: prop.name.start,
+          end: prop.name.end,
+        },
+        valueLocation: {
+          start: prop.start,
+          end: prop.end,
+        },
+        expression: templateSpans?.[prop.valueIndex]?.expression!,
+        start: prop.start,
+        end: prop.end,
+      };
+    case INodeType.MixedProperty:
+      const values = Array.isArray(prop.values) 
+        ? prop.values 
+        : [typeof prop.values === 'string' ? prop.values : ''];
+      const expressions: ts.Expression[] = [];
+      const processedValues = values.map((v) => {
+        if (typeof v === 'number') {
+          expressions.push(templateSpans?.[v]?.expression!);
+          return v;
+        }
+        return v;
+      });
+      return {
+        type: MIXED_PROPERTY,
+        name,
+        value: processedValues,
+        nameLocation: {
+          start: prop.name.start,
+          end: prop.name.end,
+        },
+        expressions,
+        valueLocation: {
+          start: prop.start,
+          end: prop.end,
+        },
+        start: prop.start,
+        end: prop.end,
+      };
+    default:
+      return {
+        type: BOOLEAN_PROPERTY,
+        name,
+        start: 0,
+        end: 0,
+      };
+  }
 }
 
 export function getTemplateHTML(
@@ -355,205 +534,19 @@ export function getTemplateHTML(
   template: ts.TemplateLiteral
 ) {
   const fullText = sourceFile.getFullText();
-
-  // Pre-template slice: exactly from start of file to template start
-  const preTemplate = fullText
-    .slice(0, template.getStart() + 1)
-    .replace(/\S/g, " ");
-
-  // Post-template slice: from template end to end of file
-  const postTemplate = fullText
-    .slice(template.getEnd() - 1)
-    .replace(/\S/g, " ");
-
+  const preTemplate = fullText.slice(0, template.getStart() + 1).replace(/\S/g, " ");
+  const postTemplate = fullText.slice(template.getEnd() - 1).replace(/\S/g, " ");
+  
   let templateText = "";
-
+  
   if (ts.isNoSubstitutionTemplateLiteral(template)) {
     templateText = template.text;
   } else if (ts.isTemplateExpression(template)) {
     templateText = template.head.text;
     template.templateSpans.forEach((span, i) => {
-      const exprText = span.expression.getText(sourceFile);
-
-      templateText +=
-        marker +
-        i.toString().padStart(exprText.length+1, filler) +
-        marker +
-        span.literal.text;
+      templateText += `<expr>${i}</expr>${span.literal.text}`;
     });
   }
-
+  
   return preTemplate + templateText + postTemplate;
-}
-
-function parseNodes(
-  nodes: INode[],
-  templateSpans: readonly ts.TemplateSpan[],
-  root: RootNode,
-  checker: ts.TypeChecker
-): ChildNode[] {
-  return nodes.flatMap((n) => parseNode(n, templateSpans, root, checker));
-}
-
-//Parse html5parser result for what we care about
-function parseNode(
-  node: INode,
-  templateSpans: readonly ts.TemplateSpan[],
-  root: RootNode,
-  checker: ts.TypeChecker
-): ChildNode | ChildNode[] {
-  //Text nodes are either static text or holes to insert in
-  if (node.type === SyntaxKind.Text) {
-    return node.value.split(match).flatMap((value, index, array) => {
-      if (index % 2 === 1) {
-        return {
-          type: INSERT_NODE,
-          start: node.start,
-          end: node.end,
-          expression: templateSpans?.[parseInt(value)].expression!,
-        };
-      }
-      //We want to trim when only content in textnode is the hole or if textnode is empty
-      if (!value || (array.length === 3 && !value.trim())) {
-        return [];
-      }
-
-      return {
-        type: TEXT_NODE,
-        value,
-        start: node.start,
-        end: node.end,
-      };
-    });
-  }
-
-  //html5parser represents comments as type tag with name "!" or ""
-  if (node.name[0] === "!" || node.name === "") {
-    return {
-      type: COMMENT_NODE,
-      value: (node.body as IText[]).join(""),
-      start: node.start,
-      end: node.end,
-    } as CommentNode;
-  }
-
-  const props = node.attributes.flatMap((v) => {
-    const nameParts = getParts(v.name.value);
-
-    if (nameParts.length === 1) {
-      const name = nameParts[0];
-      if (v.value === undefined) {
-        return {
-          name,
-          type: BOOLEAN_PROPERTY,
-          start: v.name.start,
-          end: v.name.end,
-        };
-      }
-
-      if (isNumber(name)) {
-        return {
-          type: ANONYMOUS_PROPERTY,
-          expression: templateSpans?.[name].expression!,
-          start: v.name.start,
-          end: v.name.end,
-        };
-      }
-
-      const valueParts = getParts(v.value?.value);
-
-      if (valueParts.length === 0) {
-        return {
-          name,
-          type: BOOLEAN_PROPERTY,
-        };
-      } else if (valueParts.length === 1) {
-        const value = valueParts[0];
-        if (isNumber(value)) {
-          return {
-            type: DYNAMIC_PROPERTY,
-            name,
-            expression: templateSpans?.[value].expression!,
-            start: v.name.start,
-            end: v.name.end,
-          };
-        } else {
-          return {
-            type: STRING_PROPERTY,
-            name,
-            value,
-            start: v.name.start,
-            end: v.name.end,
-            nameLocation: {
-              start: v.name.start,
-              end: v.name.end,
-            },
-            valueLocation: {
-              start: v.value.start,
-              end: v.value.end,
-            },
-          };
-        }
-      } else {
-        return {
-          type: MIXED_PROPERTY,
-          name,
-          value: valueParts,
-        };
-      }
-    }
-
-    //name is mixed static and dynamic. We only look for ...${}
-    if (nameParts[0] === "...") {
-      return {
-        type: SPREAD_PROPERTY,
-        start: v.name.start,
-        end: v.name.end,
-        expression: templateSpans?.[nameParts[1] as number].expression!,
-      };
-    }
-
-    return [];
-  }) as Property[];
-
-  const children = parseNodes(node.body ?? [], templateSpans, root, checker);
-  const name = node.rawName as string;
-  const type = /^[A-Z]/.test(name) ? COMPONENT_NODE : ELEMENT_NODE;
-
-  let tsType: ts.Type | undefined = undefined;
-  if (type === COMPONENT_NODE) {
-    const sym = checker.getPropertyOfType(root.components, name);
-    tsType =
-      sym && checker.getTypeOfSymbolAtLocation(sym, sym.valueDeclaration!);
-  } else {
-    const sym = checker.getPropertyOfType(root.elements, name);
-    tsType =
-      sym && checker.getTypeOfSymbolAtLocation(sym, sym.valueDeclaration!);
-  }
-
-  return {
-    type,
-    name,
-    props,
-    children,
-    open: {
-      start: node.start,
-      end: node.open.end,
-    },
-    close: node.close && {
-      start: node.close.start,
-      end: node.close.end,
-    },
-    start: node.start,
-    end: node.end,
-    tsType,
-  } as ElementNode | ComponentNode;
-}
-
-// Splits a string into static parts and hole indexes
-function getParts(value: string = ""): Array<string | number> {
-  return value
-    .split(match)
-    .map((v, i) => (i % 2 === 1 ? parseInt(v) : v))
-    .filter((v) => isNumber(v) || v !== "");
 }

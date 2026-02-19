@@ -1,11 +1,16 @@
 {
+  "name": "sld-parse",
+  "version": "1.0.0",
+  "main": "dist/index.js",
   "scripts": {
+    "build": "tsc",
     "test": "npx vitest run",
     "test:watch": "npx vitest",
     "tsc:watch": "tsc --watch"
   },
   "devDependencies": {
-    "vitest": "4.0.18"
+    "vitest": "4.0.18",
+    "typescript": "^5.0.0"
   },
   "dependencies": {
     "solid-js": "^1.9.11"

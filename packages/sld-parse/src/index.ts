@@ -1,4 +1,4 @@
-import { IToken, State, tokenize, TokenKind } from "./tokenize";
+import { tokenize, Token, OPEN_TAG_TOKEN, CLOSE_TAG_TOKEN, SLASH_TOKEN, IDENTIFIER_TOKEN, EQUALS_TOKEN, ATTRIBUTE_VALUE_TOKEN, TEXT_TOKEN, EXPRESSION_TOKEN, QUOTE_CHAR_TOKEN, SPREAD_TOKEN } from "./tokenize";
 
 export const enum INodeType {
   Root,
@@ -29,7 +29,6 @@ export type IText = {
   end: number;
 };
 
-//Non reactive Comment Node <!--value-->
 export type IComment = {
   type: INodeType.Comment;
   value: string;
@@ -39,7 +38,7 @@ export type IComment = {
 
 export type IInsert = {
   type: INodeType.Insert;
-  index: number; //index of hole
+  index: number;
   start: number;
   end: number;
 };
@@ -87,13 +86,15 @@ export type BooleanProperty = {
   type: INodeType.BooleanProperty;
   value: true;
   name: IName;
+  start: number;
+  end: number;
 };
 
 export type StringProperty = {
   type: INodeType.StringProperty;
   name: IName;
   quote: "'" | '"' | "";
-  value: IText;
+  value: string;
   start: number;
   end: number;
 };
@@ -102,7 +103,7 @@ export type DynamicProperty = {
   type: INodeType.DynamicProperty;
   quote: "'" | '"' | "";
   name: IName;
-  value: IInsert;
+  valueIndex: number;
   start: number;
   end: number;
 };
@@ -111,177 +112,277 @@ export type MixedProperty = {
   type: INodeType.MixedProperty;
   name: IName;
   quote: "'" | '"';
-  values: IText | IInsert[];
+  values: (string | number)[];
   start: number;
   end: number;
 };
 
-// const enum State {
-//   Literal,
-//   BeforeOpenTag,
-//   OpeningTag,
-//   AfterOpenTag,
-//   InValueNq,
-//   InValueSq,
-//   InValueDq,
-//   ClosingOpenTag,
-//   OpeningSpecial,
-//   OpeningNormalComment,
-//   InNormalComment,
-//   InShortComment,
-//   ClosingNormalComment,
-//   ClosingTag,
-// }
-
-const enum Chars {
-  _S = 32, // ' '
-  _N = 10, // \n
-  _T = 9, // \t
-  _R = 13, // \r
-  _F = 12, // \f
-  Lt = 60, // <
-  Ep = 33, // !
-  Cl = 45, // -
-  Sl = 47, // /
-  Gt = 62, // >
-  Qm = 63, // ?
-  La = 97, // a
-  Lz = 122, // z
-  Ua = 65, // A
-  Uz = 90, // Z
-  Eq = 61, // =
-  Sq = 39, // '
-  Dq = 34, // "
-  Ld = 100, // d
-  Ud = 68, //D
+function isOpenTagToken(token: Token): token is { type: typeof OPEN_TAG_TOKEN; start: number; end: number } {
+  return token.type === OPEN_TAG_TOKEN;
 }
 
-function isWhiteSpace(char: string) {
-  return /\s/.test(char);
+function isCloseTagToken(token: Token): token is { type: typeof CLOSE_TAG_TOKEN; start: number; end: number } {
+  return token.type === CLOSE_TAG_TOKEN;
 }
 
-function isValidTagChar(char: string) {
-  return /[a-zA-Z_:\.\$\-]/.test(char);
+function isSlashToken(token: Token): token is { type: typeof SLASH_TOKEN; start: number; end: number } {
+  return token.type === SLASH_TOKEN;
 }
 
-function isLowerCase(char: string) {
-  return /[a-z]/.test(char);
+function isIdentifierToken(token: Token): token is { type: typeof IDENTIFIER_TOKEN; value: string; start: number; end: number } {
+  return token.type === IDENTIFIER_TOKEN;
 }
 
-function isUpperCase(char: string) {
-  return /[A-Z]/.test(char);
-}
-function isValidAttributeChar(char: string) {
-  return /[^\s=\"\']/.test(char);
+function isTextToken(token: Token): token is { type: typeof TEXT_TOKEN; value: string; start: number; end: number } {
+  return token.type === TEXT_TOKEN;
 }
 
-const LEFT_ANGLE = "<";
+function isExpressionToken(token: Token): token is { type: typeof EXPRESSION_TOKEN; value: number; start: number; end: number } {
+  return token.type === EXPRESSION_TOKEN;
+}
+
+function isQuoteToken(token: Token): token is { type: typeof QUOTE_CHAR_TOKEN; value: "'" | '"'; start: number; end: number } {
+  return token.type === QUOTE_CHAR_TOKEN;
+}
+
+function isAttrValueToken(token: Token): token is { type: typeof ATTRIBUTE_VALUE_TOKEN; value: string; start: number; end: number } {
+  return token.type === ATTRIBUTE_VALUE_TOKEN;
+}
+
+function isEqualsToken(token: Token): token is { type: typeof EQUALS_TOKEN; start: number; end: number } {
+  return token.type === EQUALS_TOKEN;
+}
+
+function isSpreadToken(token: Token): token is { type: typeof SPREAD_TOKEN; start: number; end: number } {
+  return token.type === SPREAD_TOKEN;
+}
 
 export function parse<T = any>(
   templates: TemplateStringsArray,
   ...values: T[]
 ): IRoot {
-  let offset = 0;
-  let state: State | undefined = undefined;
-  let tokens: IToken[] = [];
-
+  const rawTextElements = new Set<string>();
+  const tokens = tokenize(Array.from(templates), rawTextElements);
+  
   const root: IRoot = {
     type: INodeType.Root,
     children: [],
     start: 0,
     end: 0,
   };
-  const parents = [root]
-  let currentNode: Partial<IElement> | null = null
-  let currentProp: Partial<IProperty> | null = null;
 
-  for (let partIndex = 0; partIndex < templates.length; partIndex++) {
-    const part = templates[partIndex];
-    [tokens, offset, state] = tokenize(part, offset, state);
-    console.log(tokens)
+  const parents: (IRoot | IElement)[] = [root];
+  let currentElement: IElement | null = null;
+  let currentPropName: IName | null = null;
+  let currentPropQuote: "'" | '"' | "" = "";
+  let currentPropStart = 0;
+  let currentPropValue: (string | number)[] = [];
+  let sawEquals = false;
+  let inTag = false;
+  let tagName = "";
+  let afterOpenTag = false;
+  let selfClosing = false;
+  let commentBuffer = "";
 
-    for (const token of tokens) {
-      switch (token.type) {
-        case TokenKind.Literal:
-          parents.at(-1)!.children.push({
-            type: INodeType.Text,
-            start: offset + token.start,
-            end: offset + token.end,
-            value: token.value,
-          } as IText);
-          break;
-        case TokenKind.OpenTag:
-          currentNode = {
-            type: INodeType.Element,
-            name: {
-              type: INodeType.Name,
-              value: token.value,
-              start: offset + token.start,
-              end: offset + token.end,
-            },
-            children: [],
-            props: [],
-          };
-          parents.at(-1)!.children.push(currentNode)
-          break;
-        case TokenKind.OpenTagEnd:
-          parents.push(currentNode)
-          break;
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    const parent = parents[parents.length - 1];
 
-        case TokenKind.CloseTag:
-          parents.pop()
-          currentNode = undefined
-          break;
-
-        case TokenKind.Whitespace:
-          break;
-
-        case TokenKind.AttrValueNq:
-          currentProp = {
-            name: {
-              type: INodeType.Name,
-              value: token.value,
-              start: offset + token.start,
-              end: offset + token.end
-            }
-          }
-          break;
-
-        case TokenKind.AttrValueEq:
-
-        break;
-
-        case TokenKind.AttrValueSq:
-        case TokenKind.AttrValueDq:
-          currentProp.type=INodeType.StringProperty
-          currentProp.value = {
-            value: token.value.slice(1,-1),
-              start: offset + token.start,
-              end: offset + token.end
-          }
-          currentNode.props?.push(currentProp)
-          currentProp =  null
-          break;
-        
+    if (isTextToken(token)) {
+      if (inTag && commentBuffer) {
+        commentBuffer += token.value;
+      } else if (inTag) {
+        // Text inside tags - ignore whitespace
+      } else {
+        parent.children.push({
+          type: INodeType.Text,
+          value: token.value,
+          start: token.start,
+          end: token.end,
+        });
       }
-    }
-    
-
-    if (currentNode){
-    
-
-    }else{
-        parents.at(-1)?.children.push({
-          type: INodeType.Insert,
-          start: offset,
-          end: offset,
-          index: partIndex
-        })
+      continue;
     }
 
+    if (isExpressionToken(token)) {
+      parent.children.push({
+        type: INodeType.Insert,
+        index: token.value,
+        start: token.start,
+        end: token.end,
+      });
+      continue;
+    }
 
-    offset += part.length;
+    if (inTag) continue;
+
+    if (isOpenTagToken(token)) {
+      inTag = true;
+      afterOpenTag = true;
+      currentElement = null;
+      sawEquals = false;
+      currentPropName = null;
+      currentPropValue = [];
+      continue;
+    }
+
+    if (isIdentifierToken(token)) {
+      if (afterOpenTag) {
+        tagName = token.value;
+        currentElement = {
+          type: INodeType.Element,
+          name: {
+            type: INodeType.Name,
+            value: token.value,
+            start: token.start,
+            end: token.end,
+          },
+          props: [],
+          children: [],
+          open: {
+            type: INodeType.Open,
+            start: token.start,
+            end: token.end,
+          },
+          start: token.start,
+          end: token.end,
+          selfClosing: false,
+        };
+        parent.children.push(currentElement);
+      } else if (inTag && currentElement) {
+        currentPropName = {
+          type: INodeType.Name,
+          value: token.value,
+          start: token.start,
+          end: token.end,
+        };
+        currentPropQuote = "";
+        currentPropValue = [];
+        sawEquals = false;
+      }
+      continue;
+    }
+
+    if (isSlashToken(token)) {
+      const nextToken = tokens[i + 1];
+      if (isCloseTagToken(nextToken) && currentElement) {
+        selfClosing = true;
+      }
+      continue;
+    }
+
+    if (isEqualsToken(token)) {
+      sawEquals = true;
+      continue;
+    }
+
+    if (isQuoteToken(token)) {
+      if (!inTag) continue;
+      
+      if (!sawEquals && currentPropName) {
+        currentElement?.props.push({
+          type: INodeType.BooleanProperty,
+          value: true,
+          name: currentPropName,
+          start: currentPropName.start,
+          end: currentPropName.end,
+        });
+        currentPropName = null;
+      }
+      currentPropQuote = token.value;
+      currentPropStart = token.start;
+      continue;
+    }
+
+    if (isAttrValueToken(token)) {
+      if (sawEquals && currentPropName) {
+        const value = token.value;
+        const isDynamic = /^\$\{/.test(value);
+        if (isDynamic) {
+          const match = value.match(/^\$\{(\d+)\}$/);
+          if (match) {
+            currentElement?.props.push({
+              type: INodeType.DynamicProperty,
+              quote: currentPropQuote,
+              name: currentPropName,
+              valueIndex: parseInt(match[1]),
+              start: currentPropName.start,
+              end: token.end,
+            });
+          }
+        } else {
+          currentElement?.props.push({
+            type: INodeType.StringProperty,
+            quote: currentPropQuote,
+            name: currentPropName,
+            value: value,
+            start: currentPropName.start,
+            end: token.end,
+          });
+        }
+        currentPropName = null;
+        sawEquals = false;
+      } else if (currentPropName && !sawEquals) {
+        currentElement?.props.push({
+          type: INodeType.BooleanProperty,
+          value: true,
+          name: currentPropName,
+          start: currentPropName.start,
+          end: token.end,
+        });
+        currentPropName = null;
+      }
+      continue;
+    }
+
+    if (isCloseTagToken(token)) {
+      if (commentBuffer) {
+        parent.children.push({
+          type: INodeType.Comment,
+          value: commentBuffer,
+          start: token.start - commentBuffer.length - 2,
+          end: token.end,
+        });
+        commentBuffer = "";
+      } else if (selfClosing && currentElement) {
+        currentElement.close = {
+          type: INodeType.Close,
+          start: token.start,
+          end: token.end,
+        };
+        currentElement.selfClosing = true;
+      } else if (currentElement) {
+        parents.push(currentElement);
+      }
+      inTag = false;
+      afterOpenTag = false;
+      selfClosing = false;
+      continue;
+    }
+
+    if (isSpreadToken(token)) {
+      if (inTag && currentElement) {
+        const nextToken = tokens[i + 1];
+        if (isExpressionToken(nextToken)) {
+          currentElement.props.push({
+            type: INodeType.DynamicProperty,
+            quote: "",
+            name: {
+              type: INodeType.Name,
+              value: "...",
+              start: token.start,
+              end: nextToken.end,
+            },
+            valueIndex: nextToken.value,
+            start: token.start,
+            end: nextToken.end,
+          });
+        }
+      }
+      continue;
+    }
   }
 
+  root.end = tokens.length > 0 ? tokens[tokens.length - 1].end : 0;
   return root;
 }

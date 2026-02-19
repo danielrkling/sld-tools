@@ -9,6 +9,6 @@
     "watch": "tsc -w"
   },
   "dependencies": {
-    "html5parser": "^2.0.2"
+    "sld-parse": "^1.0.0"
   }
 }

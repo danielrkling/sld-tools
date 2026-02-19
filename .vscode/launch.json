@@ -10,10 +10,8 @@
         "--extensionDevelopmentPath=${workspaceFolder}/packages/sld-vs-code"
       ],
       "outFiles": [
-        "${workspaceFolder}/dist/**/*.js"
-      ],
-      "cwd": "${workspaceFolder}/test",    // Set working directory here
-
+        "${workspaceFolder}/packages/sld-vs-code/dist/**/*.js"
+      ]
     }
   ]
 }
