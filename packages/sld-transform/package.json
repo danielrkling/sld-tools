@@ -15,6 +15,7 @@
     "vitest": "^2.0.0"
   },
   "dependencies": {
+    "sld-parse": "^1.0.0",
     "typescript": "^5.9.2"
   }
 }

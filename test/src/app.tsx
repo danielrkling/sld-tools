@@ -1,30 +1,53 @@
 import { sld } from "solid-html";
 import { Badge } from "@kobalte/core/badge";
-import { Show } from "solid-js";
+import { Show, For, createSignal } from "solid-js";
 
-function Message(props: { message: string }) {
-   return props.message
+function html(strings: TemplateStringsArray, ...values: any[]) {
+  return sld(strings, ...values);
 }
 
-const jsx =  <><input class={"Asdd  "} /> Hello World!
-   <Badge  ></Badge>
-   <div> </div>
-   <abbr ></abbr>
-   <Show when={true} keyed={false} children={"123"} />
-   <Message message=""  />
-   <Badge  class="123" textValue="123">New</Badge>
-   </>
-   
-const jsxShow = <Show when={true} keyed={false} children={"123"} />
-const show = sld`<Show when=${true} keyed=${false} children=${"123"} />`
+  const [items, setItems] = createSignal(["Solid", "Signals", "Reactivity"]);
+  const [isVisible, setIsVisible] = createSignal(true);
 
-const x = sld`
-   <input class=${"Asdd  "} asd /> Hello World!
-   <Badge  ></Badge>
-   <div children> </div>
-   <abbr ></abbr>
-   <Show when=${true} keyed=${false} children=${() => "123"} />
-   <Message  />
-   <Badge  class="123" textValue="123">New</Badge>
-   
-`;
+function JSX() {
+  return (
+    <div>
+      <button onClick={() => setIsVisible(!isVisible())}>Toggle List</button>
+
+      <Show when={isVisible()} fallback={<p>The list is hidden.</p>}>
+        <ul>
+          <For each={items()}>{(item) => <li>{item}</li>}</For>
+        </ul>
+      </Show>
+    </div>
+  );
+}
+
+function SLD() {
+  return (
+    sld`<div>
+      <button onClick=${() => setIsVisible(!isVisible())}>Toggle List</button>
+
+      <Show when=${isVisible()} fallback=${sld`<p>The list is hidden.</p>`}>
+        <ul>
+          <For each=${items()}>${(item) => sld`<li>${item}</li>`}</For>
+        </ul>
+      </Show>
+    </div>`
+  );
+}
+
+function HTM() {
+  return (
+    html`<div>
+      <button onClick=${() => setIsVisible(!isVisible())}>Toggle List</button>
+
+      <${Show} when=${isVisible()} fallback=${sld`<p>The list is hidden.</p>`}>
+        <ul>
+          <${For} each=${items()}>${(item) => html`<li>${item}</li>`}</${For}>
+        </ul>
+      </${Show}>
+    </div>`
+  );
+}
+
