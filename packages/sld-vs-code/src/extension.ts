@@ -1,9 +1,17 @@
 import vscode from "vscode";
 import * as ts from "typescript";
+import { sldToJsx as transformSldToJsx, jsxToSld as transformJsxToSld } from "transform-jsx";
 
-function findSldTemplates(text: string): { start: number; end: number }[] {
+const CONFIG_KEY = "sld-tools.preferredTag";
+const DEFAULT_TAG = "jsx";
+
+function getPreferredTag(): string {
+  return vscode.workspace.getConfiguration().get<string>(CONFIG_KEY, DEFAULT_TAG);
+}
+
+function findTaggedTemplates(text: string, tag: string): { start: number; end: number }[] {
   const matches: { start: number; end: number }[] = [];
-  const regex = /sld`[^`]*`/g;
+  const regex = new RegExp(`${tag}\`[\s\S]*?\``, 'g');
   let match;
   while ((match = regex.exec(text)) !== null) {
     matches.push({ start: match.index, end: match.index + match[0].length });
@@ -28,168 +36,6 @@ function findJsxElements(text: string): { start: number; end: number }[] {
   return matches;
 }
 
-function sldToJsx(sourceFile: ts.SourceFile, range: { start: number; end: number }): string {
-  function visit(node: ts.Node): string {
-    if (ts.isTaggedTemplateExpression(node)) {
-      const tagName = node.tag.getText(sourceFile);
-      if (/^sld$/i.test(tagName)) {
-        const nodeStart = node.getStart(sourceFile);
-        const nodeEnd = node.getEnd();
-        
-        if (nodeStart >= range.start && nodeEnd <= range.end) {
-          const template = node.template;
-          if (ts.isNoSubstitutionTemplateLiteral(template)) {
-            const text = template.text;
-            const topLevelElements = countTopLevelElements(text);
-            if (topLevelElements > 1) {
-              return `<>${text}</>`;
-            }
-            return text;
-          } else if (ts.isTemplateExpression(template)) {
-            let result = template.head.text;
-            for (const span of template.templateSpans) {
-              const exprText = span.expression.getText(sourceFile);
-              result += `{${exprText}}${span.literal.text}`;
-            }
-            
-            const topLevelElements = countTopLevelElements(result);
-            if (topLevelElements > 1) {
-              return `<>${result}</>`;
-            }
-            return result;
-          }
-        }
-      }
-    }
-    let result = "";
-    ts.forEachChild(node, (child) => {
-      const childResult = visit(child);
-      if (childResult) result = childResult;
-    });
-    return result;
-  }
-  return visit(sourceFile);
-}
-
-function countTopLevelElements(text: string): number {
-  let count = 0;
-  let depth = 0;
-  let inTag = false;
-  let tagName = "";
-  let isClosing = false;
-  
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    
-    if (!inTag && char === "<") {
-      isClosing = text[i + 1] === "/";
-      inTag = true;
-      tagName = "";
-      continue;
-    }
-    
-    if (inTag) {
-      if (char === ">") {
-        if (isClosing) {
-          depth--;
-        } else if (!tagName.endsWith("/")) {
-          depth++;
-        }
-        inTag = false;
-        if (depth === 1 && isClosing) {
-          count++;
-        } else if (depth === 1 && !isClosing && !tagName.endsWith("/")) {
-          count++;
-        }
-        continue;
-      }
-      
-      if (tagName === "" && /[a-zA-Z]/.test(char)) {
-        tagName = char;
-      } else if (tagName && /[a-zA-Z0-9\-]/.test(char)) {
-        tagName += char;
-      }
-      continue;
-    }
-  }
-  
-  return count;
-}
-
-function jsxToSld(sourceFile: ts.SourceFile, range: { start: number; end: number }): string {
-  const results: string[] = [];
-  
-  function visit(node: ts.Node): void {
-    if (ts.isJsxElement(node)) {
-      const nodeStart = node.getStart(sourceFile);
-      const nodeEnd = node.getEnd();
-      
-      if (nodeStart >= range.start && nodeEnd <= range.end) {
-        const tagName = node.openingElement.tagName.getText(sourceFile);
-        const attrs = renderAttributes(node.openingElement.attributes, sourceFile);
-        const children = node.children.map(c => renderJsxChild(c, sourceFile)).join("");
-        const isSelfClosing = node.closingElement === undefined;
-        
-        if (isSelfClosing) {
-          results.push(`sld\`<${tagName}${attrs} />\``);
-        } else {
-          results.push(`sld\`<${tagName}${attrs}>${children}</${tagName}>\``);
-        }
-      }
-    } else if (ts.isJsxSelfClosingElement(node)) {
-      const nodeStart = node.getStart(sourceFile);
-      const nodeEnd = node.getEnd();
-      
-      if (nodeStart >= range.start && nodeEnd <= range.end) {
-        const tagName = node.tagName.getText(sourceFile);
-        const attrs = renderAttributes(node.attributes, sourceFile);
-        results.push(`sld\`<${tagName}${attrs} />\``);
-      }
-    }
-    ts.forEachChild(node, visit);
-  }
-  
-  visit(sourceFile);
-  return results.join("\n");
-}
-
-function renderAttributes(attrs: ts.JsxAttributes, sourceFile: ts.SourceFile): string {
-  const props = attrs.properties.map(prop => {
-    if (ts.isJsxAttribute(prop)) {
-      const name = prop.name.getText(sourceFile);
-      if (prop.initializer) {
-        if (ts.isJsxExpression(prop.initializer)) {
-          return ` ${name}={${prop.initializer.expression?.getText(sourceFile) ?? ""}}`;
-        }
-        return ` ${name}="${prop.initializer.getText(sourceFile)}"`;
-      }
-      return ` ${name}`;
-    }
-    if (ts.isJsxSpreadAttribute(prop)) {
-      return ` {...${prop.expression.getText(sourceFile)}}`;
-    }
-    return "";
-  }).join("");
-  return props;
-}
-
-function renderJsxChild(child: ts.JsxChild, sourceFile: ts.SourceFile): string {
-  if (ts.isJsxText(child)) return child.getText(sourceFile);
-  if (ts.isJsxExpression(child)) return `{${child.expression?.getText(sourceFile) ?? ""}}`;
-  if (ts.isJsxElement(child)) {
-    const tagName = child.openingElement.tagName.getText(sourceFile);
-    const attrs = renderAttributes(child.openingElement.attributes, sourceFile);
-    const children = child.children.map(c => renderJsxChild(c, sourceFile)).join("");
-    return `<${tagName}${attrs}>${children}</${tagName}>`;
-  }
-  if (ts.isJsxSelfClosingElement(child)) {
-    const tagName = child.tagName.getText(sourceFile);
-    const attrs = renderAttributes(child.attributes, sourceFile);
-    return `<${tagName}${attrs} />`;
-  }
-  return "";
-}
-
 export async function activate(context: vscode.ExtensionContext) {
   const selector: vscode.DocumentSelector = [
     { scheme: "file", language: "typescript" },
@@ -205,24 +51,15 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("sld-tools.convertToJsx", async (uri: vscode.Uri, range: vscode.Range) => {
+    vscode.commands.registerCommand("sld-tools.convertToJsx", async (uri: vscode.Uri, vsRange: vscode.Range) => {
       const document = await vscode.workspace.openTextDocument(uri);
       const text = document.getText();
+      const tag = getPreferredTag();
       
-      const sourceFile = ts.createSourceFile(
-        uri.fsPath,
-        text,
-        ts.ScriptTarget.Latest,
-        true,
-        ts.ScriptKind.TSX
-      );
-
-      const start = document.offsetAt(range.start);
-      const end = document.offsetAt(range.end);
-      const jsxCode = sldToJsx(sourceFile, { start, end });
+      const jsxCode = transformSldToJsx(text, { tags: [tag] });
       
-      if (jsxCode) {
-        const edit = new vscode.TextEdit(range, jsxCode);
+      if (jsxCode !== text) {
+        const edit = new vscode.TextEdit(vsRange, jsxCode);
         const workspaceEdit = new vscode.WorkspaceEdit();
         workspaceEdit.set(uri, [edit]);
         await vscode.workspace.applyEdit(workspaceEdit);
@@ -231,24 +68,15 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("sld-tools.convertToSld", async (uri: vscode.Uri, range: vscode.Range) => {
+    vscode.commands.registerCommand("sld-tools.convertToSld", async (uri: vscode.Uri, vsRange: vscode.Range) => {
       const document = await vscode.workspace.openTextDocument(uri);
       const text = document.getText();
+      const tag = getPreferredTag();
       
-      const sourceFile = ts.createSourceFile(
-        uri.fsPath,
-        text,
-        ts.ScriptTarget.Latest,
-        true,
-        ts.ScriptKind.TSX
-      );
-
-      const start = document.offsetAt(range.start);
-      const end = document.offsetAt(range.end);
-      const sldCode = jsxToSld(sourceFile, { start, end });
+      const sldCode = transformJsxToSld(text, { tag });
       
-      if (sldCode) {
-        const edit = new vscode.TextEdit(range, sldCode);
+      if (sldCode !== text) {
+        const edit = new vscode.TextEdit(vsRange, sldCode);
         const workspaceEdit = new vscode.WorkspaceEdit();
         workspaceEdit.set(uri, [edit]);
         await vscode.workspace.applyEdit(workspaceEdit);
@@ -265,20 +93,21 @@ class SldCodeActionProvider implements vscode.CodeActionProvider {
   ): vscode.CodeAction[] {
     const text = document.getText();
     const offset = document.offsetAt(range.start);
+    const tag = getPreferredTag();
 
-    const sldMatches = findSldTemplates(text);
-    const cursorInSld = sldMatches.some(m => offset >= m.start && offset <= m.end);
+    const templateMatches = findTaggedTemplates(text, tag);
+    const cursorInTemplate = templateMatches.some(m => offset >= m.start && offset <= m.end);
     
-    if (cursorInSld) {
-      for (const match of sldMatches) {
+    if (cursorInTemplate) {
+      for (const match of templateMatches) {
         if (offset >= match.start && offset <= match.end) {
           const codeAction = new vscode.CodeAction(
-            "Convert SLD to JSX",
+            `Convert ${tag} to JSX`,
             vscode.CodeActionKind.Refactor
           );
           codeAction.command = {
             command: "sld-tools.convertToJsx",
-            title: "Convert SLD to JSX",
+            title: `Convert ${tag} to JSX`,
             arguments: [document.uri, new vscode.Range(
               document.positionAt(match.start),
               document.positionAt(match.end)
@@ -292,12 +121,12 @@ class SldCodeActionProvider implements vscode.CodeActionProvider {
       for (const match of jsxMatches) {
         if (offset >= match.start && offset <= match.end) {
           const codeAction = new vscode.CodeAction(
-            "Convert JSX to SLD",
+            `Convert JSX to ${tag}`,
             vscode.CodeActionKind.Refactor
           );
           codeAction.command = {
             command: "sld-tools.convertToSld",
-            title: "Convert JSX to SLD",
+            title: `Convert JSX to ${tag}`,
             arguments: [document.uri, new vscode.Range(
               document.positionAt(match.start),
               document.positionAt(match.end)

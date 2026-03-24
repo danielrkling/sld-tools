@@ -1,0 +1,41 @@
+{
+  "name": "transform-jsx",
+  "version": "1.0.0",
+  "description": "Transform between tagged template literals and JSX syntax",
+  "type": "module",
+  "main": "dist/index.mjs",
+  "types": "dist/index.d.mts",
+  "module": "dist/index.mjs",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.mjs",
+      "types": "./dist/index.d.mts"
+    }
+  },
+  "scripts": {
+    "build": "tsdown src/index.ts --format esm --minify",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "jsx",
+    "transform",
+    "template-literal",
+    "tagged-template"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "typescript": "^5.3.3",
+    "tsdown": "^0.20.0-beta.3",
+    "vitest": "^1.1.0"
+  },
+  "dependencies": {
+    "parse-jsx": "file:../parse-jsx",
+    "typescript": "^5.3.3"
+  }
+}

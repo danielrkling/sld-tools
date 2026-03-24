@@ -28,6 +28,12 @@ function SLD() {
     sld`<div>
       <button onClick=${() => setIsVisible(!isVisible())}>Toggle List</button>
 
+      <${Show} when=${isVisible()} fallback=${sld`<p>The list is hidden.</p>`}>
+        <ul>
+          <${For} each=${items()}>${(item) => sld`<li>${item}</li>`}<//>
+        </ul>
+      </${Show}>
+
       <Show when=${isVisible()} fallback=${sld`<p>The list is hidden.</p>`}>
         <ul>
           <For each=${items()}>${(item) => sld`<li>${item}</li>`}</For>

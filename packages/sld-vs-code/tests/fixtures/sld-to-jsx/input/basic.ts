@@ -1,4 +1,6 @@
 const name = "World";
+const expr = "test";
+const cls = "active";
 
 export const single = sld`<div>Hello</div>`;
 
@@ -17,5 +19,3 @@ export const mixed = sld`<div></div>{expr}<span></span>`;
 export const empty = sld`<div></div>`;
 
 export const withBoolean = sld`<input disabled />`;
-
-export const withDynamicAttr = sld`<div class={cls} />`;

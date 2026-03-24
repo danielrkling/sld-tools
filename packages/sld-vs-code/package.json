@@ -27,6 +27,17 @@
     "onLanguage:typescriptreact"
   ],
   "contributes": {
+    "configuration": {
+      "title": "SLD Tools",
+      "properties": {
+        "sld-tools.preferredTag": {
+          "type": "string",
+          "default": "jsx",
+          "enum": ["jsx", "sld"],
+          "description": "Preferred tag name for JSX templates (jsx or sld)"
+        }
+      }
+    },
     "languages": [
       {
         "id": "sld",
@@ -106,6 +117,7 @@
     "esbuild": "^0.25.9",
     "sld-ts-plugin": "file:../sld-ts-plugin",
     "sld-parse": "file:../sld-parse",
+    "transform-jsx": "file:../transform-jsx",
     "vitest": "^2.0.0"
   },
   "scripts": {

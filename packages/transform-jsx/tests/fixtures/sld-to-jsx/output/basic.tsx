@@ -1,6 +1,6 @@
 const name = "World";
-const expr = "test";
-const cls = "active";
+const myClass = "active";
+const handler = () => {};
 
 export const single = <div>Hello</div>;
 
@@ -19,3 +19,11 @@ export const mixed = <><div></div>{expr}<span></span></>;
 export const empty = <div></div>;
 
 export const withBoolean = <input disabled />;
+
+export const withDynamicAttr = <div class={myClass} />;
+
+export const withArrowExpression = <div class={myClass}>Hello</div>;
+
+export const withArrowChild = <div>{name}</div>;
+
+export const withEventHandler = <button onClick={handler}>Click</button>;

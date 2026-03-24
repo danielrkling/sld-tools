@@ -12,6 +12,7 @@
     "watch": "tsc -w"
   },
   "dependencies": {
-    "sld-parse": "^1.0.0"
+    "sld-parse": "^1.0.0",
+    "transform-jsx": "file:../transform-jsx"
   }
 }

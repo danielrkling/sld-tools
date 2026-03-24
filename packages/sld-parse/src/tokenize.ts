@@ -118,12 +118,10 @@ export type Token =
 const STATE_TEXT = 0;
 const STATE_TAG = 1;
 const STATE_ATTR_VALUE = 2;
-const STATE_RAW_TEXT = 3;
 const STATE_COMMENT = 4;
 
 export const tokenize = (
   strings: TemplateStringsArray | string[],
-  rawTextElements: Set<string>,
   expressionLengths?: number[],
 ): Token[] => {
   const tokens: Token[] = [];
@@ -181,15 +179,8 @@ export const tokenize = (
             cursor++;
           } else if (code === 62) {
             // ">"
-            if (
-              rawTextElements.has(lastTagName) &&
-              tokens[tokens.length - 1]?.type !== SLASH_TOKEN
-            ) {
-              state = STATE_RAW_TEXT;
-            } else {
-              state = STATE_TEXT;
-              lastTagName = "";
-            }
+            state = STATE_TEXT;
+            lastTagName = "";
             const tokenStart = globalPosition + cursor;
             const tokenEnd = globalPosition + cursor + 1;
             tokens.push({ type: CLOSE_TAG_TOKEN, start: tokenStart, end: tokenEnd });
@@ -266,35 +257,6 @@ export const tokenize = (
             state = STATE_TAG;
             quoteChar = "";
             cursor = endQuoteIndex + 1;
-          }
-          break;
-        }
-        case STATE_RAW_TEXT: {
-          // Case-sensitive search for the specific closing tag with optional whitespace in between, e.g. < / textarea >
-          const closeTagRegex = new RegExp(`<\\s*/\\s*${lastTagName}\\s*>`, "g");
-          closeTagRegex.lastIndex = cursor;
-          const match = closeTagRegex.exec(str);
-
-          if (match) {
-            const endOfRawIdx = match.index;
-            if (endOfRawIdx > cursor) {
-              const tokenStart = globalPosition + cursor;
-              const tokenEnd = globalPosition + endOfRawIdx;
-              tokens.push({
-                type: TEXT_TOKEN,
-                value: str.slice(cursor, endOfRawIdx),
-                start: tokenStart,
-                end: tokenEnd,
-              });
-            }
-            state = STATE_TEXT;
-            cursor = endOfRawIdx;
-            lastTagName = "";
-          } else {
-            const tokenStart = globalPosition + cursor;
-            const tokenEnd = globalPosition + len;
-            tokens.push({ type: TEXT_TOKEN, value: str.slice(cursor), start: tokenStart, end: tokenEnd });
-            cursor = len;
           }
           break;
         }

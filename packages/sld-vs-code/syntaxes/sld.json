@@ -2,116 +2,87 @@
   "scopeName": "text.sld",
   "injectionSelector": "L:source.js, L:source.ts T:template-string.sld",
   "patterns": [
-    {
-      "include": "#tag"
-    },
-    {
-      "include": "#comment"
-    }
+    { "include": "#empty-closing-tag" },
+    { "include": "#dynamic-tag" },
+    { "include": "#tag" },
+    { "include": "#comment" }
   ],
   "repository": {
-    "tag": {
-      "begin": "</?(?=[a-zA-Z][\\w\\-\\.]*)",
+    "empty-closing-tag": {
+      "match": "(<\\s*)(//\\s*>)",
+      "captures": {
+        "1": { "name": "punctuation.definition.tag.sld" },
+        "2": { "name": "punctuation.definition.tag.sld" }
+      }
+    },
+    "dynamic-tag": {
+      "begin": "(<\\s*/?)\\s*(\\$\\{)([^}]*)(\\})",
       "beginCaptures": {
-        "0": {
-          "name": "punctuation.definition.tag.sld"
-        }
+        "1": { "name": "punctuation.definition.tag.sld" },
+        "2": { "name": "punctuation.definition.template-expression.begin.ts" },
+        "3": { "name": "entity.name.class.sld" },
+        "4": { "name": "punctuation.definition.template-expression.end.ts" }
       },
-      "end": "/?>",
+      "end": "(\\s*/?\\s*>)",
       "endCaptures": {
-        "0": {
-          "name": "punctuation.definition.tag.sld"
-        }
+        "1": { "name": "punctuation.definition.tag.sld" }
       },
+      "patterns": [{ "include": "#tag-stuff" }]
+    },
+    "tag": {
+      "begin": "(<\\s*/?)\\s*(?=[a-zA-Z])",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.sld" }
+      },
+      "end": "\\s*/?\\s*>",
+      "endCaptures": { "0": { "name": "punctuation.definition.tag.sld" } },
+      "patterns": [{ "include": "#tag-stuff" }]
+    },
+    "tag-stuff": {
       "patterns": [
+        { "include": "#inside-string" },
+        { "include": "#string-substitution" },
         {
-          "match": "(?<=</?)[A-Z][\\w\\-\\.]*",
+          "match": "(?<=<\\s*/?\\s*)[A-Z][\\w\\-\\.]*",
           "name": "entity.name.class.sld"
         },
         {
-          "match": "(?<=</?)[a-z][\\w\\-\\.]*",
+          "match": "(?<=<\\s*/?\\s*)[a-z][\\w\\-\\.]*",
           "name": "entity.name.tag.sld"
         },
-        {
-          "name": "keyword.operator.assignment.sld",
-          "match": "(?<=[a-zA-Z_][\\w\\-\\.]*)="
-        },
-        {
-          "name": "variable.parameter.sld",
-          "match": "[a-zA-Z_][\\w\\-\\.:]*"
-        },
-        {
-          "name": "variable.parameter.sld.spread",
-          "match": "\\.\\.\\."
-        },
-        {
-          "include": "#inside-string"
-        },
-        {
-          "include": "#string-substitution"
-        }
+        { "name": "keyword.operator.assignment.sld", "match": "\\s*=\\s*" },
+        { "name": "variable.parameter.sld", "match": "[a-zA-Z_][\\w\\-\\.:]*" },
+        { "name": "variable.parameter.sld.spread", "match": "\\.\\.\\." }
       ]
     },
     "inside-string": {
       "patterns": [
         {
           "name": "string.quoted.sld",
-          "begin": "(?<=\\=)(\"|')",
+          "begin": "(?<==\\s*)(\"|')",
           "beginCaptures": {
-            "1": {
-              "name": "punctuation.definition.string.begin.sld"
-            }
+            "1": { "name": "punctuation.definition.string.begin.sld" }
           },
           "end": "(?<!\\\\)\\1",
           "endCaptures": {
-            "1": {
-              "name": "punctuation.definition.string.end.sld"
-            }
+            "1": { "name": "punctuation.definition.string.end.sld" }
           },
-          "patterns": [
-            {
-              "include": "source.ts#template-substitution-element"
-            },
-            {
-              "name": "string.quoted.ts.template",
-              "begin": "`",
-              "beginCaptures": {
-                "0": {
-                  "name": "punctuation.definition.string.template.begin.ts"
-                }
-              },
-              "end": "`",
-              "endCaptures": {
-                "0": {
-                  "name": "punctuation.definition.string.template.end.ts"
-                }
-              }
-            }
-          ]
+          "patterns": [{ "include": "#string-substitution" }]
         }
       ]
     },
     "string-substitution": {
       "begin": "(\\$\\{)",
       "beginCaptures": {
-        "1": {
-          "name": "punctuation.definition.template-expression.begin.ts"
-        }
+        "1": { "name": "punctuation.definition.template-expression.begin.ts" }
       },
       "end": "(\\})",
       "endCaptures": {
-        "1": {
-          "name": "punctuation.definition.template-expression.end.ts"
-        }
+        "1": { "name": "punctuation.definition.template-expression.end.ts" }
       },
       "name": "meta.template.expression.ts",
       "contentName": "meta.embedded.ts",
-      "patterns": [
-        {
-          "include": "source.ts"
-        }
-
-      ]
+      "patterns": [{ "include": "source.ts" }]
     },
     "comment": {
       "patterns": [
@@ -119,15 +90,11 @@
           "name": "comment.block.sld",
           "begin": "<!--",
           "beginCaptures": {
-            "0": {
-              "name": "punctuation.definition.comment.sld"
-            }
+            "0": { "name": "punctuation.definition.comment.sld" }
           },
           "end": "-->",
           "endCaptures": {
-            "0": {
-              "name": "punctuation.definition.comment.sld"
-            }
+            "0": { "name": "punctuation.definition.comment.sld" }
           },
           "contentName": "comment.block.sld"
         }

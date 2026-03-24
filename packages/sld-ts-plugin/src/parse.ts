@@ -1,13 +1,21 @@
 import * as ts from "typescript/lib/tsserverlibrary";
 import {
-  IRoot,
-  IChild,
-  IElement,
-  IText,
-  IInsert,
-  IProperty,
-  INodeType,
-  parse as sldParse,
+  tokenize,
+  parse,
+  RootNode as SldRootNode,
+  ElementNode as SldElementNode,
+  TextNode as SldTextNode,
+  ExpressionNode as SldExpressionNode,
+  ChildNode as SldChildNode,
+  PropNode as SldPropNode,
+  ROOT_NODE as SLD_ROOT_NODE,
+  ELEMENT_NODE as SLD_ELEMENT_NODE,
+  TEXT_NODE as SLD_TEXT_NODE,
+  EXPRESSION_NODE as SLD_EXPRESSION_NODE,
+  BOOLEAN_PROP as SLD_BOOLEAN_PROP,
+  STATIC_PROP as SLD_STRING_PROP,
+  EXPRESSION_PROP as SLD_EXPRESSION_PROP,
+  SPREAD_PROP as SLD_SPREAD_PROP,
 } from "sld-parse";
 import {
   getFunctionTypeFromTemplate,
@@ -297,24 +305,20 @@ export function parseSLDTemplate(
   sourceFile: ts.SourceFile,
   node: ts.TaggedTemplateExpression
 ): RootNode {
-  const templates = getTemplateStringsArray(ts, sourceFile, node.template);
-  const sldRoot = sldParse(templates);
+  const { strings, expressions } = getTemplateStringsArray(ts, sourceFile, node.template);
+  const tokens = tokenize(strings);
+  const sldRoot = parse(tokens);
   
-  let spans = [] as readonly ts.TemplateSpan[];
+  let spans: ts.Expression[] = [];
   if (ts.isTemplateExpression(node.template)) {
-    spans = node.template.templateSpans;
+    spans = node.template.templateSpans.map(span => span.expression);
   }
 
   const sym = checker.getSymbolAtLocation(node.tag)!;
   const type = checker.getTypeOfSymbolAtLocation(sym, node);
-  const components = checker.getTypeOfSymbolAtLocation(
-    type.getProperty("components")!,
-    node
-  );
-  const elements = checker.getTypeOfSymbolAtLocation(
-    type.getProperty("elements")!,
-    node
-  );
+  const typeArgs = checker.getTypeArguments(type as ts.TypeReference);
+  const components = typeArgs[0] || type;
+  const elements = typeArgs[1] || components;
   
   const root: RootNode = {
     type: ROOT_NODE,
@@ -333,28 +337,26 @@ function getTemplateStringsArray(
   ts: typeof import("typescript"),
   sourceFile: ts.SourceFile,
   template: ts.TemplateLiteral
-): TemplateStringsArray {
+): { strings: string[]; expressions: ts.Expression[] } {
   const strings: string[] = [];
-  const rawStrings: string[] = [];
+  const expressions: ts.Expression[] = [];
   
   if (ts.isNoSubstitutionTemplateLiteral(template)) {
     strings.push(template.text);
-    rawStrings.push(template.text);
   } else if (ts.isTemplateExpression(template)) {
     strings.push(template.head.text);
-    rawStrings.push(template.head.text);
     for (const span of template.templateSpans) {
+      expressions.push(span.expression);
       strings.push(span.literal.text);
-      rawStrings.push(span.literal.text);
     }
   }
   
-  return Object.assign(strings, { raw: rawStrings }) as TemplateStringsArray;
+  return { strings, expressions };
 }
 
 function convertChildren(
-  children: IChild[],
-  templateSpans: readonly ts.TemplateSpan[],
+  children: SldChildNode[],
+  templateSpans: ts.Expression[],
   root: RootNode,
   checker: ts.TypeChecker,
   ts: typeof import("typescript"),
@@ -364,167 +366,30 @@ function convertChildren(
 }
 
 function convertNode(
-  node: IChild,
-  templateSpans: readonly ts.TemplateSpan[],
+  node: SldChildNode,
+  templateSpans: ts.Expression[],
   root: RootNode,
   checker: ts.TypeChecker,
   ts: typeof import("typescript"),
   sourceFile: ts.SourceFile
 ): ChildNode | ChildNode[] {
   switch (node.type) {
-    case INodeType.Text:
+    case SLD_TEXT_NODE:
       return {
         type: TEXT_NODE,
         value: node.value,
-        start: node.start,
-        end: node.end,
-      };
-    case INodeType.Insert:
-      return {
-        type: INSERT_NODE,
-        start: node.start,
-        end: node.end,
-        expression: templateSpans?.[node.index]?.expression!,
-      };
-    case INodeType.Comment:
-      return {
-        type: COMMENT_NODE,
-        value: node.value,
-        start: node.start,
-        end: node.end,
-      };
-    case INodeType.Element:
-      return convertElement(node, templateSpans, root, checker, ts, sourceFile);
-    default:
-      return [];
-  }
-}
-
-function convertElement(
-  node: IElement,
-  templateSpans: readonly ts.TemplateSpan[],
-  root: RootNode,
-  checker: ts.TypeChecker,
-  ts: typeof import("typescript"),
-  sourceFile: ts.SourceFile
-): ElementNode | ComponentNode {
-  const name = node.name.value;
-  const type = /^[A-Z]/.test(name) ? COMPONENT_NODE : ELEMENT_NODE;
-  
-  const props: Property[] = node.props.map((prop) => convertProperty(prop, templateSpans, ts, sourceFile));
-  const children = convertChildren(node.children, templateSpans, root, checker, ts, sourceFile);
-  
-  let tsType: ts.Type | undefined;
-  if (type === COMPONENT_NODE) {
-    const sym = checker.getPropertyOfType(root.components, name);
-    tsType = sym && checker.getTypeOfSymbolAtLocation(sym, sym.valueDeclaration!);
-  } else {
-    const sym = checker.getPropertyOfType(root.elements, name);
-    tsType = sym && checker.getTypeOfSymbolAtLocation(sym, sym.valueDeclaration!);
-  }
-  
-  return {
-    type,
-    name,
-    props,
-    children,
-    open: {
-      start: node.open.start,
-      end: node.open.end,
-    },
-    close: node.close ? {
-      start: node.close.start,
-      end: node.close.end,
-    } : null,
-    start: node.start,
-    end: node.end,
-    tsType,
-  };
-}
-
-function convertProperty(
-  prop: IProperty,
-  templateSpans: readonly ts.TemplateSpan[],
-  ts: typeof import("typescript"),
-  sourceFile: ts.SourceFile
-): Property {
-  const name = prop.name.value;
-  
-  switch (prop.type) {
-    case INodeType.BooleanProperty:
-      return {
-        type: BOOLEAN_PROPERTY,
-        name,
-        start: prop.start,
-        end: prop.end,
-      };
-    case INodeType.StringProperty:
-      return {
-        type: STRING_PROPERTY,
-        name,
-        value: prop.value,
-        start: prop.start,
-        end: prop.end,
-        nameLocation: {
-          start: prop.name.start,
-          end: prop.name.end,
-        },
-        valueLocation: {
-          start: prop.start,
-          end: prop.end,
-        },
-      };
-    case INodeType.DynamicProperty:
-      return {
-        type: DYNAMIC_PROPERTY,
-        name,
-        nameLocation: {
-          start: prop.name.start,
-          end: prop.name.end,
-        },
-        valueLocation: {
-          start: prop.start,
-          end: prop.end,
-        },
-        expression: templateSpans?.[prop.valueIndex]?.expression!,
-        start: prop.start,
-        end: prop.end,
-      };
-    case INodeType.MixedProperty:
-      const values = Array.isArray(prop.values) 
-        ? prop.values 
-        : [typeof prop.values === 'string' ? prop.values : ''];
-      const expressions: ts.Expression[] = [];
-      const processedValues = values.map((v) => {
-        if (typeof v === 'number') {
-          expressions.push(templateSpans?.[v]?.expression!);
-          return v;
-        }
-        return v;
-      });
-      return {
-        type: MIXED_PROPERTY,
-        name,
-        value: processedValues,
-        nameLocation: {
-          start: prop.name.start,
-          end: prop.name.end,
-        },
-        expressions,
-        valueLocation: {
-          start: prop.start,
-          end: prop.end,
-        },
-        start: prop.start,
-        end: prop.end,
-      };
-    default:
-      return {
-        type: BOOLEAN_PROPERTY,
-        name,
         start: 0,
         end: 0,
       };
+    case SLD_EXPRESSION_NODE:
+      return {
+        type: INSERT_NODE,
+        start: 0,
+        end: 0,
+        expression: templateSpans[node.value] || ({} as ts.Expression),
+      };
+    default:
+      return [];
   }
 }
 
