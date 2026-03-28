@@ -2,6 +2,8 @@ const name = "World";
 const myClass = "active";
 const handler = () => {};
 
+function jsx(strings: TemplateStringsArray, ...exprs: any[]) {}
+
 export const single = jsx`<div>Hello</div>`;
 
 export const multiple = jsx`<div>Hello</div><span>World</span>`;
@@ -14,7 +16,7 @@ export const nested = jsx`<div><span>Hello</span></div>`;
 
 export const withAttributes = jsx`<div class="foo" id="bar">Hello</div>`;
 
-export const mixed = jsx`<div></div>${expr}<span></span>`;
+export const mixed = jsx`<div></div>${()=>name}<span></span>`;
 
 export const empty = jsx`<div></div>`;
 

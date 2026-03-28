@@ -1,5 +1,4 @@
 import vscode from "vscode";
-import * as ts from "typescript";
 import { sldToJsx as transformSldToJsx, jsxToSld as transformJsxToSld } from "transform-jsx";
 
 const CONFIG_KEY = "sld-tools.preferredTag";
@@ -9,136 +8,89 @@ function getPreferredTag(): string {
   return vscode.workspace.getConfiguration().get<string>(CONFIG_KEY, DEFAULT_TAG);
 }
 
-function findTaggedTemplates(text: string, tag: string): { start: number; end: number }[] {
-  const matches: { start: number; end: number }[] = [];
-  const regex = new RegExp(`${tag}\`[\s\S]*?\``, 'g');
-  let match;
-  while ((match = regex.exec(text)) !== null) {
-    matches.push({ start: match.index, end: match.index + match[0].length });
-  }
-  return matches;
-}
-
-function findJsxElements(text: string): { start: number; end: number }[] {
-  const matches: { start: number; end: number }[] = [];
-  
-  const selfClosingRegex = /<([A-Z][a-zA-Z0-9]*)\s*[^>]*\/?>/g;
-  let match;
-  while ((match = selfClosingRegex.exec(text)) !== null) {
-    matches.push({ start: match.index, end: match.index + match[0].length });
-  }
-
-  const openCloseRegex = /<([A-Z][a-zA-Z0-9]*)\s*[^>]*>[\s\S]*?<\/\1>/g;
-  while ((match = openCloseRegex.exec(text)) !== null) {
-    matches.push({ start: match.index, end: match.index + match[0].length });
-  }
-
-  return matches;
+function getFullDocumentRange(document: vscode.TextDocument): vscode.Range {
+  const lastLine = document.lineCount - 1;
+  return new vscode.Range(
+    0, 0,
+    lastLine,
+    document.lineAt(lastLine).text.length
+  );
 }
 
 export async function activate(context: vscode.ExtensionContext) {
-  const selector: vscode.DocumentSelector = [
-    { scheme: "file", language: "typescript" },
-    { scheme: "file", language: "typescriptreact" },
-    { scheme: "file", language: "javascript" },
-    { scheme: "file", language: "javascriptreact" },
-  ];
-
   context.subscriptions.push(
-    vscode.languages.registerCodeActionsProvider(selector, new SldCodeActionProvider(), {
-      providedCodeActionKinds: [vscode.CodeActionKind.Refactor]
-    })
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand("sld-tools.convertToJsx", async (uri: vscode.Uri, vsRange: vscode.Range) => {
-      const document = await vscode.workspace.openTextDocument(uri);
+    vscode.commands.registerCommand("sld-tools.convertToJsx", async (uri?: vscode.Uri) => {
+      const document = uri 
+        ? await vscode.workspace.openTextDocument(uri)
+        : vscode.window.activeTextEditor?.document;
+      
+      if (!document) return;
+      
       const text = document.getText();
       const tag = getPreferredTag();
+      const result = transformSldToJsx(text, { tags: [tag] });
       
-      const jsxCode = transformSldToJsx(text, { tags: [tag] });
-      
-      if (jsxCode !== text) {
-        const edit = new vscode.TextEdit(vsRange, jsxCode);
+      if (result !== text) {
+        const edit = new vscode.TextEdit(getFullDocumentRange(document), result);
         const workspaceEdit = new vscode.WorkspaceEdit();
-        workspaceEdit.set(uri, [edit]);
+        workspaceEdit.set(document.uri, [edit]);
         await vscode.workspace.applyEdit(workspaceEdit);
       }
     })
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("sld-tools.convertToSld", async (uri: vscode.Uri, vsRange: vscode.Range) => {
-      const document = await vscode.workspace.openTextDocument(uri);
+    vscode.commands.registerCommand("sld-tools.convertToSld", async (uri?: vscode.Uri) => {
+      const document = uri 
+        ? await vscode.workspace.openTextDocument(uri)
+        : vscode.window.activeTextEditor?.document;
+      
+      if (!document) return;
+      
       const text = document.getText();
       const tag = getPreferredTag();
+      const result = transformJsxToSld(text, { tag });
       
-      const sldCode = transformJsxToSld(text, { tag });
-      
-      if (sldCode !== text) {
-        const edit = new vscode.TextEdit(vsRange, sldCode);
+      if (result !== text) {
+        const edit = new vscode.TextEdit(getFullDocumentRange(document), result);
         const workspaceEdit = new vscode.WorkspaceEdit();
-        workspaceEdit.set(uri, [edit]);
+        workspaceEdit.set(document.uri, [edit]);
         await vscode.workspace.applyEdit(workspaceEdit);
       }
     })
   );
-}
 
-class SldCodeActionProvider implements vscode.CodeActionProvider {
-  provideCodeActions(
-    document: vscode.TextDocument,
-    range: vscode.Range,
-    context: vscode.CodeActionContext
-  ): vscode.CodeAction[] {
-    const text = document.getText();
-    const offset = document.offsetAt(range.start);
-    const tag = getPreferredTag();
-
-    const templateMatches = findTaggedTemplates(text, tag);
-    const cursorInTemplate = templateMatches.some(m => offset >= m.start && offset <= m.end);
-    
-    if (cursorInTemplate) {
-      for (const match of templateMatches) {
-        if (offset >= match.start && offset <= match.end) {
-          const codeAction = new vscode.CodeAction(
-            `Convert ${tag} to JSX`,
-            vscode.CodeActionKind.Refactor
-          );
-          codeAction.command = {
-            command: "sld-tools.convertToJsx",
-            title: `Convert ${tag} to JSX`,
-            arguments: [document.uri, new vscode.Range(
-              document.positionAt(match.start),
-              document.positionAt(match.end)
-            )]
-          };
-          return [codeAction];
+  context.subscriptions.push(
+    vscode.commands.registerCommand("sld-tools.toggle", async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) return;
+      
+      const document = editor.document;
+      const text = document.getText();
+      const tag = getPreferredTag();
+      
+      const templateRegex = new RegExp(`${tag}\`[\\s\\S]*?\``, 'g');
+      const hasTemplates = templateRegex.test(text);
+      
+      if (hasTemplates) {
+        const result = transformSldToJsx(text, { tags: [tag] });
+        if (result !== text) {
+          const edit = new vscode.TextEdit(getFullDocumentRange(document), result);
+          const workspaceEdit = new vscode.WorkspaceEdit();
+          workspaceEdit.set(document.uri, [edit]);
+          await vscode.workspace.applyEdit(workspaceEdit);
+        }
+      } else {
+        const result = transformJsxToSld(text, { tag });
+        if (result !== text) {
+          const edit = new vscode.TextEdit(getFullDocumentRange(document), result);
+          const workspaceEdit = new vscode.WorkspaceEdit();
+          workspaceEdit.set(document.uri, [edit]);
+          await vscode.workspace.applyEdit(workspaceEdit);
         }
       }
-    } else {
-      const jsxMatches = findJsxElements(text);
-      for (const match of jsxMatches) {
-        if (offset >= match.start && offset <= match.end) {
-          const codeAction = new vscode.CodeAction(
-            `Convert JSX to ${tag}`,
-            vscode.CodeActionKind.Refactor
-          );
-          codeAction.command = {
-            command: "sld-tools.convertToSld",
-            title: `Convert JSX to ${tag}`,
-            arguments: [document.uri, new vscode.Range(
-              document.positionAt(match.start),
-              document.positionAt(match.end)
-            )]
-          };
-          return [codeAction];
-        }
-      }
-    }
-
-    return [];
-  }
+    })
+  );
 }
 
 export async function deactivate(): Promise<void> {}

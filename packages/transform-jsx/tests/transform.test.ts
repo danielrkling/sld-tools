@@ -18,6 +18,13 @@ describe("sld-to-jsx", () => {
     expect(result).toBe(expected);
   });
 
+  it("transforms nested.ts to jsx", () => {
+    const input = readFixture(join(__dirname, "fixtures", "sld-to-jsx", "input", "nested.ts"));
+    const expected = readFixture(join(__dirname, "fixtures", "sld-to-jsx", "output", "nested.tsx"));
+    const result = sldToJsx(input);
+    expect(result).toBe(expected);
+  });
+
   it("transforms single element", () => {
     const input = `const x = jsx\`<div>Hello</div>\`;`;
     const expected = `const x = <div>Hello</div>;`;
@@ -86,6 +93,13 @@ describe("jsx-to-sld", () => {
   it("transforms basic.tsx to jsx template", () => {
     const input = readFixture(inputPath);
     const expected = readFixture(expectedPath);
+    const result = jsxToSld(input);
+    expect(result).toBe(expected);
+  });
+
+  it("transforms nested.tsx to jsx template", () => {
+    const input = readFixture(join(__dirname, "fixtures", "jsx-to-sld", "input", "nested.tsx"));
+    const expected = readFixture(join(__dirname, "fixtures", "jsx-to-sld", "output", "nested.ts"));
     const result = jsxToSld(input);
     expect(result).toBe(expected);
   });
@@ -168,5 +182,35 @@ describe("tag configuration", () => {
     const input = `const x = <div>Hello</div>;`;
     const expected = `const x = jsx\`<div>Hello</div>\`;`;
     expect(jsxToSld(input, { tag: "jsx" })).toBe(expected);
+  });
+});
+
+describe("advanced features", () => {
+  it("transforms dynamic tags (self-closing)", () => {
+    const Comp = "MyComponent";
+    const input = `const Comp = "MyComponent"; const x = jsx\`<\${Comp} />\`;`;
+    const expected = `const Comp = "MyComponent"; const x = <Comp />;`;
+    expect(sldToJsx(input)).toBe(expected);
+  });
+
+  it("transforms dynamic tags (with children)", () => {
+    const Comp = "MyComponent";
+    const input = `const Comp = "MyComponent"; const x = jsx\`<\${Comp}>Hello</\${Comp}>\`;`;
+    const expected = `const Comp = "MyComponent"; const x = <Comp>Hello</Comp>;`;
+    expect(sldToJsx(input)).toBe(expected);
+  });
+
+  it("transforms dynamic tags with props", () => {
+    const Comp = "MyComponent";
+    const input = `const Comp = "MyComponent"; const x = jsx\`<\${Comp} class="foo">Hello</\${Comp}>\`;`;
+    const expected = `const Comp = "MyComponent"; const x = <Comp class="foo">Hello</Comp>;`;
+    expect(sldToJsx(input)).toBe(expected);
+  });
+
+  it("transforms nested templates", () => {
+    const inner = "span";
+    const input = `const inner = "span"; const x = jsx\`<div><\${inner}>Hello</\${inner}></div>\`;`;
+    const expected = `const inner = "span"; const x = <div><inner>Hello</inner></div>;`;
+    expect(sldToJsx(input)).toBe(expected);
   });
 });

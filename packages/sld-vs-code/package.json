@@ -104,8 +104,24 @@
     ],
     "commands": [
       {
-        "command": "sld-tools.showStatus",
-        "title": "SLD Tools: Show Status"
+        "command": "sld-tools.convertToJsx",
+        "title": "SLD Tools: Convert Tagged Templates to JSX"
+      },
+      {
+        "command": "sld-tools.convertToSld",
+        "title": "SLD Tools: Convert JSX to Tagged Templates"
+      },
+      {
+        "command": "sld-tools.toggle",
+        "title": "SLD Tools: Toggle (Smart Convert)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "sld-tools.toggle",
+        "key": "ctrl+shift+j",
+        "mac": "cmd+shift+j",
+        "when": "editorTextFocus && (language == 'typescript' || language == 'typescriptreact' || language == 'javascript' || language == 'javascriptreact')"
       }
     ]
   },

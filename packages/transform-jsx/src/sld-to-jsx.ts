@@ -6,11 +6,13 @@ import {
   ElementNode,
   TextNode,
   ExpressionNode,
+  CommentNode,
   ChildNode,
   PropNode,
   ELEMENT_NODE,
   TEXT_NODE,
   EXPRESSION_NODE,
+  COMMENT_NODE,
   BOOLEAN_PROP,
   STRING_PROP,
   EXPRESSION_PROP,
@@ -22,15 +24,16 @@ const VOID_ELEMENTS = new Set([
   "link", "meta", "param", "source", "track", "wbr",
 ]);
 
-interface Replacement {
+interface TemplateInfo {
+  node: ts.TaggedTemplateExpression;
   start: number;
   end: number;
-  newText: string;
+  tag: string;
 }
 
 export function sldToJsx(text: string, options?: { tags?: string[] }): string {
   const tags = options?.tags ?? ["jsx", "sld"];
-  
+
   const sourceFile = ts.createSourceFile(
     "test.ts",
     text,
@@ -39,17 +42,52 @@ export function sldToJsx(text: string, options?: { tags?: string[] }): string {
     ts.ScriptKind.TSX
   );
 
-  const replacements: Replacement[] = [];
+  const templates = findAllTaggedTemplates(sourceFile, tags);
+
+  if (templates.length === 0) {
+    return text;
+  }
+
+  const replacements: { start: number; end: number; newText: string }[] = [];
+
+  for (const tmpl of templates) {
+    try {
+      const jsx = transformTemplate(tmpl.node, sourceFile);
+      replacements.push({
+        start: tmpl.start,
+        end: tmpl.end,
+        newText: jsx,
+      });
+    } catch (e) {
+      console.warn(`Failed to transform template:`, e);
+    }
+  }
+
+  replacements.sort((a, b) => b.start - a.start);
+  
+  let result = text;
+  for (const r of replacements) {
+    result = result.slice(0, r.start) + r.newText + result.slice(r.end);
+  }
+
+  return result;
+}
+
+function findAllTaggedTemplates(
+  sourceFile: ts.SourceFile,
+  tags: string[]
+): TemplateInfo[] {
+  const templates: TemplateInfo[] = [];
 
   function visit(node: ts.Node): void {
     if (ts.isTaggedTemplateExpression(node)) {
       const tagName = node.tag.getText(sourceFile);
       if (tags.some(t => t.toLowerCase() === tagName.toLowerCase())) {
-        const jsx = transformTemplate(node.template, sourceFile);
-        replacements.push({
+        templates.push({
+          node,
           start: node.getStart(sourceFile),
           end: node.getEnd(),
-          newText: jsx,
+          tag: tagName,
         });
       }
     }
@@ -57,37 +95,85 @@ export function sldToJsx(text: string, options?: { tags?: string[] }): string {
   }
 
   visit(sourceFile);
-  return applyReplacements(text, replacements);
+
+  templates.sort((a, b) => a.start - b.start);
+
+  return templates;
 }
 
 function transformTemplate(
-  template: ts.TemplateLiteral,
+  node: ts.TaggedTemplateExpression,
   sourceFile: ts.SourceFile
 ): string {
-  const { strings, expressions } = extractTemplateData(template, sourceFile);
-  const tokens = tokenize(strings);
+  const template = node.template;
+  const { templateParts, expressions } = extractTemplateData(template, sourceFile);
+  
+  const processedExpressions = expressions.map(exprText => {
+    return transformExpression(exprText, sourceFile);
+  });
+  
+  const tokens = tokenize(templateParts);
   const ast = parse(tokens);
-  return renderAstToJsx(ast, expressions);
+  return renderAstToJsx(ast, processedExpressions);
+}
+
+function transformExpression(
+  exprText: string,
+  sourceFile: ts.SourceFile
+): string {
+  const exprSourceFile = ts.createSourceFile(
+    "expr.ts",
+    exprText,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX
+  );
+  
+  const innerTemplates = findAllTaggedTemplates(exprSourceFile, ["jsx", "sld"]);
+  
+  if (innerTemplates.length === 0) {
+    return exprText;
+  }
+  
+  innerTemplates.sort((a, b) => b.start - a.start);
+  
+  let result = exprText;
+  
+  for (const tmpl of innerTemplates) {
+    const nodeStart = tmpl.start;
+    const nodeEnd = tmpl.end;
+    
+    try {
+      const jsx = transformTemplate(tmpl.node, exprSourceFile);
+      const marker = `\${__JSX_TRANSFORMED__${jsx}__JSX_TRANSFORMED__}`;
+      result = result.slice(0, nodeStart) + marker + result.slice(nodeEnd);
+    } catch (e) {
+      console.log("Transform error:", e);
+    }
+  }
+  
+  return result;
 }
 
 function extractTemplateData(
   template: ts.TemplateLiteral,
   sourceFile: ts.SourceFile
-): { strings: string[]; expressions: string[] } {
-  const strings: string[] = [];
+): { templateParts: string[]; expressions: string[] } {
   const expressions: string[] = [];
+  const templateParts: string[] = [];
 
   if (ts.isNoSubstitutionTemplateLiteral(template)) {
-    strings.push(template.text);
-  } else {
-    strings.push(template.head.text);
-    for (const span of template.templateSpans) {
-      expressions.push(span.expression.getText(sourceFile));
-      strings.push(span.literal.text);
-    }
+    return { templateParts: [template.text], expressions };
   }
 
-  return { strings, expressions };
+  templateParts.push(template.head.text);
+  for (const span of template.templateSpans) {
+    const exprText = span.expression.getText(sourceFile);
+    expressions.push(exprText);
+    templateParts.push(span.literal.text);
+  }
+
+  return { templateParts, expressions };
 }
 
 function renderAstToJsx(ast: RootNode, expressions: string[]): string {
@@ -105,8 +191,27 @@ function renderChild(node: ChildNode, expressions: string[]): string {
 
   if (node.type === EXPRESSION_NODE) {
     const exprNode = node as ExpressionNode;
-    const expr = unwrapArrowExpression(expressions[exprNode.value]);
+    let expr = unwrapArrowExpression(expressions[exprNode.value]);
+    
+    if (expr.includes("__JSX_TRANSFORMED__")) {
+      const jsxMatch = expr.match(/\$\{__JSX_TRANSFORMED__(.+?)__JSX_TRANSFORMED__\}/);
+      if (jsxMatch) {
+        return jsxMatch[1];
+      }
+      return expr;
+    }
+    
+    if (containsJsxContent(expr)) {
+      return expr;
+    }
     return `{${expr}}`;
+  }
+
+  if (node.type === COMMENT_NODE) {
+    const commentNode = node as CommentNode;
+    const children = commentNode.children || [];
+    const value = children.map((c: ChildNode) => c.type === TEXT_NODE ? (c as TextNode).value : `{${(c as ExpressionNode).value}}`).join("");
+    return `<!--${value}-->`;
   }
 
   if (node.type === ELEMENT_NODE) {
@@ -116,14 +221,49 @@ function renderChild(node: ChildNode, expressions: string[]): string {
   return "";
 }
 
+function containsJsxContent(text: string): boolean {
+  const trimmed = text.trim();
+  if (trimmed.startsWith("<") && trimmed.endsWith(">")) {
+    return true;
+  }
+  if (trimmed.includes("<") && trimmed.includes(">")) {
+    let angleBracketCount = 0;
+    let braceDepth = 0;
+    for (let i = 0; i < trimmed.length; i++) {
+      const char = trimmed[i];
+      if (char === "<" && braceDepth === 0) {
+        angleBracketCount++;
+      } else if (char === ">" && braceDepth === 0) {
+        angleBracketCount--;
+      } else if (char === "{") {
+        braceDepth++;
+      } else if (char === "}") {
+        braceDepth--;
+      }
+    }
+    return angleBracketCount > 0;
+  }
+  return false;
+}
+
 function renderElement(node: ElementNode, expressions: string[]): string {
-  const tagName = String(node.name);
+  let tagName: string;
+  
+  const name = node.name;
+  if (typeof name === "number") {
+    const expr = unwrapArrowExpression(expressions[name]);
+    tagName = expr;
+  } else {
+    tagName = String(name);
+  }
+  
   const props = node.props.map((p) => renderProp(p, expressions)).join("");
   const children = node.children
     .map((c) => renderChild(c, expressions))
     .join("");
 
-  if (node.slash || VOID_ELEMENTS.has(tagName)) {
+  const hasSlash = node.tokens.openTag.slash;
+  if (hasSlash || VOID_ELEMENTS.has(String(node.name))) {
     return `<${tagName}${props} />`;
   }
 
@@ -140,11 +280,32 @@ function renderProp(prop: PropNode, expressions: string[]): string {
   }
 
   if (prop.type === EXPRESSION_PROP) {
-    const expr = unwrapArrowExpression(expressions[prop.value]);
+    let expr = unwrapArrowExpression(expressions[prop.value]);
+    
+    if (expr.includes("__JSX_TRANSFORMED__")) {
+      const jsxMatch = expr.match(/\$\{__JSX_TRANSFORMED__(.+?)__JSX_TRANSFORMED__\}/);
+      if (jsxMatch) {
+        expr = jsxMatch[1];
+      }
+    }
+    
     if (prop.name === "...") {
       return ` {...${expr}}`;
     }
     return ` ${prop.name}={${expr}}`;
+  }
+
+  if (prop.type === SPREAD_PROP) {
+    let expr = unwrapArrowExpression(expressions[prop.value]);
+    
+    if (expr.includes("__JSX_TRANSFORMED__")) {
+      const jsxMatch = expr.match(/\$\{__JSX_TRANSFORMED__(.+?)__JSX_TRANSFORMED__\}/);
+      if (jsxMatch) {
+        expr = jsxMatch[1];
+      }
+    }
+    
+    return ` {...${expr}}`;
   }
 
   return "";
@@ -161,16 +322,4 @@ function unwrapArrowExpression(exprText: string): string {
     return arrowMatch[1].trim();
   }
   return exprText;
-}
-
-function applyReplacements(text: string, replacements: Replacement[]): string {
-  replacements.sort((a, b) => b.start - a.start);
-  let result = text;
-  for (const replacement of replacements) {
-    result =
-      result.slice(0, replacement.start) +
-      replacement.newText +
-      result.slice(replacement.end);
-  }
-  return result;
 }

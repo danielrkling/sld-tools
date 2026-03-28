@@ -27,7 +27,7 @@ export function jsxToSld(text: string, options?: { tag?: string }): string {
       const tagName = node.openingElement.tagName.getText(sourceFile);
       const attrs = renderAttributes(node.openingElement.attributes, sourceFile);
       const children = node.children
-        .map((c) => renderJsxChild(c, sourceFile))
+        .map((c) => renderJsxChild(c, sourceFile, tag))
         .join("");
 
       const sld = `${tag}\`<${tagName}${attrs}>${children}</${tagName}>\``;
@@ -52,7 +52,7 @@ export function jsxToSld(text: string, options?: { tag?: string }): string {
       const nodeEnd = node.getEnd();
 
       const children = node.children
-        .map((c) => renderJsxChild(c, sourceFile))
+        .map((c) => renderJsxChild(c, sourceFile, tag))
         .join("");
 
       const sld = `${tag}\`${children}\``;
@@ -99,22 +99,22 @@ function renderAttributes(
 
 function renderJsxChild(
   child: ts.JsxChild,
-  sourceFile: ts.SourceFile
+  sourceFile: ts.SourceFile,
+  tag: string
 ): string {
   if (ts.isJsxText(child)) return child.text;
   if (ts.isJsxExpression(child)) {
     const exprText = child.expression?.getText(sourceFile) ?? "";
-    const wrappedExpr = shouldWrapExpression(null, exprText)
-      ? `() => ${exprText}`
-      : exprText;
+    const convertedExpr = convertNestedJsx(exprText, sourceFile, tag);
+    const wrappedExpr = shouldWrapExpression(null, convertedExpr)
+      ? `() => ${convertedExpr}`
+      : convertedExpr;
     return `\${${wrappedExpr}}`;
   }
   if (ts.isJsxElement(child)) {
     const tagName = child.openingElement.tagName.getText(sourceFile);
     const attrs = renderAttributes(child.openingElement.attributes, sourceFile);
-    const children = child.children
-      .map((c) => renderJsxChild(c, sourceFile))
-      .join("");
+    const children = renderChildrenWithFormatting(child.children, sourceFile, tag);
     return `<${tagName}${attrs}>${children}</${tagName}>`;
   }
   if (ts.isJsxSelfClosingElement(child)) {
@@ -123,6 +123,94 @@ function renderJsxChild(
     return `<${tagName}${attrs} />`;
   }
   return "";
+}
+
+function convertNestedJsx(exprText: string, sourceFile: ts.SourceFile, tag: string = "jsx"): string {
+  const wrapped = `<wrapper>${exprText}</wrapper>`;
+  const tempFile = ts.createSourceFile("temp.tsx", wrapped, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  
+  const replacements: Replacement[] = [];
+  
+  function visit(node: ts.Node): void {
+    if (ts.isJsxElement(node) && node.openingElement.tagName.getText(tempFile) === "wrapper") {
+      ts.forEachChild(node, visit);
+      return;
+    }
+    if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node) || ts.isJsxFragment(node)) {
+      const nestedResult = convertJsxNodeToSld(node, tempFile, tag);
+      const nestedTemplate = `${tag}\`${nestedResult}\``;
+      const nodeStart = node.getStart(tempFile);
+      const nodeEnd = node.getEnd();
+      replacements.push({ start: nodeStart, end: nodeEnd, newText: nestedTemplate });
+      return;
+    }
+    ts.forEachChild(node, visit);
+  }
+  
+  visit(tempFile);
+  
+  if (replacements.length === 0) return exprText;
+  
+  replacements.sort((a, b) => b.start - a.start);
+  let result = wrapped;
+  for (const r of replacements) {
+    result = result.slice(0, r.start) + r.newText + result.slice(r.end);
+  }
+  
+  return result.slice("<wrapper>".length, -"</wrapper>".length);
+}
+
+function convertJsxNodeToSld(node: ts.JsxElement | ts.JsxSelfClosingElement | ts.JsxFragment, sourceFile: ts.SourceFile, tag: string): string {
+  if (ts.isJsxElement(node)) {
+    const tagName = node.openingElement.tagName.getText(sourceFile);
+    const attrs = renderAttributes(node.openingElement.attributes, sourceFile);
+    const children = renderChildrenWithFormatting(node.children, sourceFile, tag);
+    return `<${tagName}${attrs}>${children}</${tagName}>`;
+  }
+  if (ts.isJsxSelfClosingElement(node)) {
+    const tagName = node.tagName.getText(sourceFile);
+    const attrs = renderAttributes(node.attributes, sourceFile);
+    return `<${tagName}${attrs} />`;
+  }
+  if (ts.isJsxFragment(node)) {
+    const children = renderChildrenWithFormatting(node.children, sourceFile, tag);
+    return children;
+  }
+  return "";
+}
+
+function renderChildrenWithFormatting(
+  children: ts.NodeArray<ts.JsxChild>,
+  sourceFile: ts.SourceFile,
+  tag: string
+): string {
+  if (children.length === 0) return "";
+  
+  const results: string[] = [];
+  
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i];
+    const childText = renderJsxChild(child, sourceFile, tag);
+    
+    if (i === 0) {
+      results.push(childText);
+    } else {
+      const prevChild = children[i - 1];
+      const prevEnd = prevChild.getEnd();
+      const currStart = child.getStart(sourceFile);
+      const betweenText = sourceFile.text.slice(prevEnd, currStart);
+      
+      const isWhitespaceOnly = ts.isJsxText(child) && child.text.trim() === "";
+      
+      if (isWhitespaceOnly) {
+        results.push(betweenText);
+      } else {
+        results.push(betweenText + childText);
+      }
+    }
+  }
+  
+  return results.join("");
 }
 
 function isPrimitiveExpression(exprText: string): boolean {

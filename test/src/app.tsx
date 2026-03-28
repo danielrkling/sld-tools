@@ -6,54 +6,33 @@ function html(strings: TemplateStringsArray, ...values: any[]) {
   return sld(strings, ...values);
 }
 
-  const [items, setItems] = createSignal(["Solid", "Signals", "Reactivity"]);
-  const [isVisible, setIsVisible] = createSignal(true);
+const [items, setItems] = createSignal(["Solid", "Signals", "Reactivity"]);
+const [isVisible, setIsVisible] = createSignal(true);
 
-function JSX() {
+function JSX(props: { class?: string }) {
   return (
-    <div>
-      <button onClick={() => setIsVisible(!isVisible())}>Toggle List</button>
+    jsx`
+      <h1 class=${() => props.class}>Hello, Solid!</h1>
+      <div>
+        <button ...${props} onClick=${() => setIsVisible(!isVisible())}>
+          Toggle List
+        </button>
 
-      <Show when={isVisible()} fallback={<p>The list is hidden.</p>}>
-        <ul>
-          <For each={items()}>{(item) => <li>{item}</li>}</For>
-        </ul>
-      </Show>
-    </div>
+        <Show when=${() => isVisible()} fallback=${() => <p>The list is hidden.</p>}>
+          <ul>
+            <For each=${() => items()}>${() => (item) => jsx`<li>${() => item}</li>`}</For>
+          </ul>
+        </Show>
+      </div>
+    `
   );
 }
+
 
 function SLD() {
-  return (
-    sld`<div>
-      <button onClick=${() => setIsVisible(!isVisible())}>Toggle List</button>
-
-      <${Show} when=${isVisible()} fallback=${sld`<p>The list is hidden.</p>`}>
-        <ul>
-          <${For} each=${items()}>${(item) => sld`<li>${item}</li>`}<//>
-        </ul>
-      </${Show}>
-
-      <Show when=${isVisible()} fallback=${sld`<p>The list is hidden.</p>`}>
-        <ul>
-          <For each=${items()}>${(item) => sld`<li>${item}</li>`}</For>
-        </ul>
+  return jsx`
+      <Show when=${isVisible()} fallback=${<p>The list is hidden.</p>}>
+        Hello World
       </Show>
-    </div>`
-  );
-}
-
-function HTM() {
-  return (
-    html`<div>
-      <button onClick=${() => setIsVisible(!isVisible())}>Toggle List</button>
-
-      <${Show} when=${isVisible()} fallback=${sld`<p>The list is hidden.</p>`}>
-        <ul>
-          <${For} each=${items()}>${(item) => html`<li>${item}</li>`}</${For}>
-        </ul>
-      </${Show}>
-    </div>`
-  );
-}
-
+    `;
+}   
