@@ -1,7 +1,6 @@
 const name = "World";
 const myClass = "active";
 const handler = () => {};
-const myRef = (el: any) => {};
 
 function jsx(strings: TemplateStringsArray, ...exprs: any[]) {}
 
