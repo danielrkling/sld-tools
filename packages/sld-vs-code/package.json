@@ -138,7 +138,7 @@
   },
   "scripts": {
     "build:web": "esbuild ./src/extension.ts --bundle --format=cjs --outfile=./dist/web/extension.js --external:vscode --minify",
-    "build": "esbuild ./src/extension.ts --bundle --format=cjs --outfile=./dist/extension.js --external:vscode --external:typescript --bundle",
+    "build": "esbuild ./src/extension.ts --bundle --format=cjs --outfile=./dist/extension.js --external:vscode --external:typescript --bundle --platform=node",
     "watch": "esbuild ./src/extension.ts --bundle --format=cjs --outfile=./dist/extension.js --external:vscode --watch",
     "prepublish": "npm run build",
     "test": "vitest run",

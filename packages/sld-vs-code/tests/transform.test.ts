@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { sldToJsx, jsxToSld } from "transform-jsx";
+import { toJsx, toTagged } from "transform-jsx";
 import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath } from "url";
@@ -30,7 +30,7 @@ describe("sld-to-jsx", () => {
         ? fs.readFileSync(outputPath, "utf-8").trim() 
         : "";
       
-      const result = sldToJsx(input, { tags: ["sld"] });
+      const result = toJsx(input);
       expect(result.trim()).toBe(expected.trim());
     });
   }
@@ -57,7 +57,7 @@ describe("jsx-to-sld", () => {
         ? fs.readFileSync(outputPath, "utf-8").trim() 
         : "";
       
-      const result = jsxToSld(input, { tag: "sld" });
+      const result = toTagged(input);
       expect(result.trim()).toBe(expected.trim());
     });
   }

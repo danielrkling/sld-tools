@@ -1,38 +1,39 @@
-import { sld } from "solid-html";
-import { Badge } from "@kobalte/core/badge";
-import { Show, For, createSignal } from "solid-js";
+import { createSignal, onCleanup } from "solid-js";
 
-function html(strings: TemplateStringsArray, ...values: any[]) {
-  return sld(strings, ...values);
-}
-
-const [items, setItems] = createSignal(["Solid", "Signals", "Reactivity"]);
-const [isVisible, setIsVisible] = createSignal(true);
-
-function JSX(props: { class?: string }) {
+// A nested child component
+function TaskItem(props) {
   return (
-    jsx`
-      <h1 class=${() => props.class}>Hello, Solid!</h1>
-      <div>
-        <button ...${props} onClick=${() => setIsVisible(!isVisible())}>
-          Toggle List
-        </button>
-
-        <Show when=${() => isVisible()} fallback=${() => <p>The list is hidden.</p>}>
-          <ul>
-            <For each=${() => items()}>${() => (item) => jsx`<li>${() => item}</li>`}</For>
-          </ul>
-        </Show>
-      </div>
-    `
+    <li class="task-item">
+      <span style={{
+          "text-decoration": props.completed ? "line-through" : "none",
+        }}>
+        {props.text}
+      </span>
+      <button onClick={props.onDelete(props.id)}>Delete</button>
+    </li>
   );
 }
 
-
-function SLD() {
-  return jsx`
-      <Show when=${isVisible()} fallback=${<p>The list is hidden.</p>}>
-        Hello World
-      </Show>
-    `;
-}   
+// Main Component
+export default function TodoApp() {
+  // 3. JSX Return
+  return (
+    <div class="todo-app">
+      <h2>My SolidJS Todo List</h2>
+      <form onSubmit={addTask}>
+        <input type="text" value={inputText()} onInput={(e) => setInputText(e.target.value)} placeholder="Add a new task..." />
+        <button type="submit">Add Task</button>
+      </form>
+      <ul>
+        <For each={tasks()} fallback={<p>No tasks yet!</p>}>
+          {(task) => (
+            <TaskItem id={task.id} text={task.text} completed={task.completed} onDelete={deleteTask} />
+          )}
+        </For>
+      </ul>
+      <footer>
+        <strong>Total Tasks:</strong> {tasks().length}
+      </footer>
+    </div>
+  );
+}

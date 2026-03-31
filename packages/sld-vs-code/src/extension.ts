@@ -1,12 +1,5 @@
 import vscode from "vscode";
-import { sldToJsx as transformSldToJsx, jsxToSld as transformJsxToSld } from "transform-jsx";
-
-const CONFIG_KEY = "sld-tools.preferredTag";
-const DEFAULT_TAG = "jsx";
-
-function getPreferredTag(): string {
-  return vscode.workspace.getConfiguration().get<string>(CONFIG_KEY, DEFAULT_TAG);
-}
+import { toJsx, toTagged } from "transform-jsx";
 
 function getFullDocumentRange(document: vscode.TextDocument): vscode.Range {
   const lastLine = document.lineCount - 1;
@@ -27,8 +20,7 @@ export async function activate(context: vscode.ExtensionContext) {
       if (!document) return;
       
       const text = document.getText();
-      const tag = getPreferredTag();
-      const result = transformSldToJsx(text, { tags: [tag] });
+      const result = toJsx(text);
       
       if (result !== text) {
         const edit = new vscode.TextEdit(getFullDocumentRange(document), result);
@@ -48,8 +40,7 @@ export async function activate(context: vscode.ExtensionContext) {
       if (!document) return;
       
       const text = document.getText();
-      const tag = getPreferredTag();
-      const result = transformJsxToSld(text, { tag });
+      const result = toTagged(text);
       
       if (result !== text) {
         const edit = new vscode.TextEdit(getFullDocumentRange(document), result);
@@ -67,13 +58,13 @@ export async function activate(context: vscode.ExtensionContext) {
       
       const document = editor.document;
       const text = document.getText();
-      const tag = getPreferredTag();
+      const tag = "jsx";
       
       const templateRegex = new RegExp(`${tag}\`[\\s\\S]*?\``, 'g');
       const hasTemplates = templateRegex.test(text);
       
       if (hasTemplates) {
-        const result = transformSldToJsx(text, { tags: [tag] });
+        const result = toJsx(text);
         if (result !== text) {
           const edit = new vscode.TextEdit(getFullDocumentRange(document), result);
           const workspaceEdit = new vscode.WorkspaceEdit();
@@ -81,7 +72,7 @@ export async function activate(context: vscode.ExtensionContext) {
           await vscode.workspace.applyEdit(workspaceEdit);
         }
       } else {
-        const result = transformJsxToSld(text, { tag });
+        const result = toTagged(text);
         if (result !== text) {
           const edit = new vscode.TextEdit(getFullDocumentRange(document), result);
           const workspaceEdit = new vscode.WorkspaceEdit();
