@@ -1,5 +1,5 @@
 import * as ts from "typescript";
-
+import { computeMappings, getJsxPosition, getTaggedPosition, MappingResult } from "./mappings";
 
 export function toTagged(code: string): string {
   let result = code;
@@ -32,18 +32,26 @@ export function toTagged(code: string): string {
       inner = convertJsxFragmentToString(jsxElement, sourceFile);
     }
 
-    let replacement = `jsx\`${inner}\``;
+    const replacement = `jsx\`${inner}\``;
 
-    const start = jsxElement.getStart();
-    const end = jsxElement.getEnd();
-
-    result = result.slice(0, start) + replacement + result.slice(end);
+    result =
+      result.slice(0, jsxElement.getStart()) +
+      replacement +
+      result.slice(jsxElement.getEnd());
   }
 
   return result;
 }
 
-function findFirstJSXElement(node: ts.Node): ts.JsxElement | ts.JsxSelfClosingElement | ts.JsxFragment | undefined {
+export function toTaggedWithMappings(code: string): { code: string; mappings: MappingResult } {
+  const codeResult = toTagged(code);
+  const mappings = computeMappings(code, codeResult);
+  return { code: codeResult, mappings };
+}
+
+function findFirstJSXElement(
+  node: ts.Node,
+): ts.JsxElement | ts.JsxSelfClosingElement | ts.JsxFragment | undefined {
   if (
     ts.isJsxElement(node) ||
     ts.isJsxSelfClosingElement(node) ||
@@ -51,15 +59,13 @@ function findFirstJSXElement(node: ts.Node): ts.JsxElement | ts.JsxSelfClosingEl
   ) {
     return node;
   }
-  
-  // Skip traversing into JSX expression attribute values
+
   if (ts.isJsxExpression(node)) {
     return undefined;
   }
-  
+
   return ts.forEachChild(node, findFirstJSXElement);
 }
-
 
 function convertAttributes(
   attributes: ts.JsxAttributes,
@@ -127,7 +133,6 @@ function convertJsxElementChildren(
   let result = "";
   const text = sourceFile.text;
 
-  // Add whitespace between opening element and first child
   const openingEnd = node.openingElement.getEnd();
   const firstChild = children[0];
   const firstStart = firstChild.getStart();
@@ -137,8 +142,7 @@ function convertJsxElementChildren(
 
   for (let i = 0; i < children.length; i++) {
     const child = children[i];
-    
-    // Get any whitespace between previous child and this one
+
     if (i > 0) {
       const prevChild = children[i - 1];
       const prevEnd = prevChild.getEnd();
@@ -147,7 +151,7 @@ function convertJsxElementChildren(
         result += text.slice(prevEnd, currStart);
       }
     }
-    
+
     result += convertJsxChildToTagged(child, sourceFile);
   }
 
@@ -174,8 +178,8 @@ function convertJsxElementToString(
   sourceFile: ts.SourceFile,
 ): string {
   const tagName = getTagNameText(node.openingElement.tagName);
-  const openTagName = isComponent(node.openingElement.tagName) 
-    ? "${" + tagName + "}" 
+  const openTagName = isComponent(node.openingElement.tagName)
+    ? "${" + tagName + "}"
     : tagName;
   const attributes = convertAttributes(
     node.openingElement.attributes,
@@ -214,7 +218,7 @@ function convertJsxFragmentToString(
 
   for (let i = 0; i < node.children.length; i++) {
     const child = node.children[i];
-    
+
     if (i > 0) {
       const prevChild = node.children[i - 1];
       const prevEnd = prevChild.getEnd();
@@ -223,9 +227,11 @@ function convertJsxFragmentToString(
         children += text.slice(prevEnd, currStart);
       }
     }
-    
+
     children += convertJsxChildToTagged(child, sourceFile);
   }
 
   return `${children}`;
 }
+
+export { getJsxPosition, getTaggedPosition };

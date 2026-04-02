@@ -1,7 +1,7 @@
 {
-  "name": "transform-jsx",
+  "name": "ts-plugin-jsx",
   "version": "1.0.0",
-  "description": "Transform between tagged template literals and JSX syntax",
+  "description": "TypeScript language service plugin for jsx tagged templates",
   "main": "dist/index.cjs",
   "types": "dist/index.d.ts",
   "exports": {
@@ -19,29 +19,25 @@
     "type-check": "tsc --noEmit"
   },
   "keywords": [
+    "typescript",
     "jsx",
-    "transform",
-    "template-literal",
+    "language-service",
+    "plugin",
     "tagged-template"
   ],
   "author": "",
   "license": "MIT",
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
   "devDependencies": {
-    "@types/babel__traverse": "^7.28.0",
     "@types/node": "^20.10.6",
-    "solid-js": "^1.9.12",
     "tsdown": "^0.20.0-beta.3",
     "typescript": "^5.3.3",
     "vitest": "^1.1.0"
   },
   "dependencies": {
-    "@babel/parser": "^8.0.0-rc.2",
-    "@babel/traverse": "^7.29.0",
-    "@babel/types": "^8.0.0-rc.2",
-    "@types/diff": "^8.0.0",
-    "diff": "^7.0.0",
     "parse-jsx": "file:../parse-jsx",
-    "recast": "^0.23.9",
-    "typescript": "^5.3.3"
+    "transform-jsx": "file:../transform-jsx"
   }
 }

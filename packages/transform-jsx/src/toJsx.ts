@@ -1,5 +1,6 @@
 import * as ts from "typescript";
 import { tokenize, parse, RootNode } from "parse-jsx";
+import { computeMappings, getJsxPosition, getTaggedPosition, MappingResult } from "./mappings";
 
 export function toJsx(code: string): string {
   let result = code;
@@ -42,6 +43,7 @@ export function toJsx(code: string): string {
     const tokens = tokenize(strings as unknown as TemplateStringsArray);
     const parsed = parse(tokens) as RootNode;
     const jsxCode = printJsxFromAST(parsed, expressions, result);
+
     result =
       result.slice(0, template.getStart()) +
       jsxCode +
@@ -49,6 +51,12 @@ export function toJsx(code: string): string {
   }
 
   return result;
+}
+
+export function toJsxWithMappings(code: string): { code: string; mappings: MappingResult } {
+  const codeResult = toJsx(code);
+  const mappings = computeMappings(code, codeResult);
+  return { code: codeResult, mappings };
 }
 
 function findFirstTaggedTemplate(
@@ -121,6 +129,10 @@ function printJsxElement(
       const expr = expressions[propValue];
       const exprText = sourceCode.slice(expr.getStart(), expr.getEnd());
       attrs += ` ${propName}={${exprText}}`;
+    } else if (propType === "SPREAD" && propValue !== undefined) {
+      const expr = expressions[propValue];
+      const exprText = sourceCode.slice(expr.getStart(), expr.getEnd());
+      attrs += ` {...${exprText}}`;
     }
   }
 
@@ -149,3 +161,5 @@ function printJsxElement(
     return `<${name}${attrs}></${name}>`;
   }
 }
+
+export { getJsxPosition, getTaggedPosition } from "./mappings";

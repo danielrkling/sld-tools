@@ -7,10 +7,10 @@
   ],
   "scripts": {
     "build:ts-plugin": "npm run build --workspace=sld-ts-plugin",
+    "build:ts-plugin-jsx": "npm run build --workspace=ts-plugin-jsx",
     "build:vs-code": "npm run build --workspace=sld-vs-code",
     "watch:ts-plugin": "npm run watch --workspace=sld-ts-plugin",
     "watch:vs-code": "npm run watch --workspace=sld-vs-code",
-    "build": "npm run build:ts-plugin && npm run build:vs-code"
-
+    "build": "npm run build:ts-plugin && npm run build:ts-plugin-jsx && npm run build:vs-code"
   }
 }
