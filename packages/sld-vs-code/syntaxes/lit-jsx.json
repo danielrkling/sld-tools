@@ -7,15 +7,15 @@
       "patterns": [
         {
           "match": "<",
-          "name": "invalid.illegal.bad-angle-bracket.sld"
+          "name": "invalid.illegal.bad-angle-bracket.jsx"
         }
       ]
     }
   },
   "patterns": [
     {
-      "contentName": "meta.embedded.block.sld",
-      "begin": "(?i)\\b(\\w+)\\.(\\w+\\([^)]*\\))\\.(sld)(`)",
+      "contentName": "meta.embedded.block.jsx",
+      "begin": "(?i)\\b(\\w+)\\.(\\w+\\([^)]*\\))\\.(jsx)(`)",
       "beginCaptures": {
         "1": {
           "name": "variable.js"
@@ -41,13 +41,13 @@
           "include": "source.ts#template-substitution-element"
         },
         {
-          "include": "text.sld"
+          "include": "text.jsx"
         }
       ]
     },
     {
-      "contentName": "meta.embedded.block.sld",
-      "begin": "(?i)(\\w+\\([^)]*\\))\\.(sld)(`)",
+      "contentName": "meta.embedded.block.jsx",
+      "begin": "(?i)(\\w+\\([^)]*\\))\\.(jsx)(`)",
       "beginCaptures": {
         "1": {
           "name": "entity.name.function.js"
@@ -70,13 +70,13 @@
           "include": "source.ts#template-substitution-element"
         },
         {
-          "include": "text.sld"
+          "include": "text.jsx"
         }
       ]
     },
     {
-      "contentName": "meta.embedded.block.sld",
-      "begin": "(?i)\\b(\\w+)\\.(sld)(`)",
+      "contentName": "meta.embedded.block.jsx",
+      "begin": "(?i)\\b(\\w+)\\.(jsx)(`)",
       "beginCaptures": {
         "1": {
           "name": "variable.js"
@@ -99,13 +99,13 @@
           "include": "source.ts#template-substitution-element"
         },
         {
-          "include": "text.sld"
+          "include": "text.jsx"
         }
       ]
     },
     {
-      "contentName": "meta.embedded.block.sld",
-      "begin": "(?i)\\.(sld)(`)",
+      "contentName": "meta.embedded.block.jsx",
+      "begin": "(?i)\\.(jsx)(`)",
       "beginCaptures": {
         "1": {
           "name": "entity.name.function.tagged-template.js"
@@ -125,13 +125,13 @@
           "include": "source.ts#template-substitution-element"
         },
         {
-          "include": "text.sld"
+          "include": "text.jsx"
         }
       ]
     },
     {
-      "contentName": "meta.embedded.block.sld",
-      "begin": "(?i)\\b(sld)(`)",
+      "contentName": "meta.embedded.block.jsx",
+      "begin": "(?i)\\b(jsx)(`)",
       "beginCaptures": {
         "1": {
           "name": "entity.name.function.tagged-template.js"
@@ -151,10 +151,10 @@
           "include": "source.ts#template-substitution-element"
         },
         {
-          "include": "text.sld"
+          "include": "text.jsx"
         }
       ]
     }
   ],
-  "scopeName": "text.lit-sld"
+  "scopeName": "text.lit-jsx"
 }

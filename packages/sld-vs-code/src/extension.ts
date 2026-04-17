@@ -69,10 +69,10 @@ function isPositionInTemplate(
 let outputChannel: vscode.OutputChannel;
 
 export async function activate(context: vscode.ExtensionContext) {
-  outputChannel = vscode.window.createOutputChannel("SLD Tools");
+  outputChannel = vscode.window.createOutputChannel("JSX Tagged Templates");
   context.subscriptions.push(outputChannel);
   context.subscriptions.push(
-    vscode.commands.registerCommand("sld-tools.convertToJsx", async (uri?: vscode.Uri) => {
+    vscode.commands.registerCommand("jsx-tagged.convertToJsx", async (uri?: vscode.Uri) => {
       const document = uri 
         ? await vscode.workspace.openTextDocument(uri)
         : vscode.window.activeTextEditor?.document;
@@ -95,7 +95,7 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("sld-tools.convertToSld", async (uri?: vscode.Uri) => {
+    vscode.commands.registerCommand("jsx-tagged.convertToSld", async (uri?: vscode.Uri) => {
       const { toTagged } = await import("transform-jsx");
       const document = uri 
         ? await vscode.workspace.openTextDocument(uri)
@@ -119,7 +119,7 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("sld-tools.toggle", async () => {
+    vscode.commands.registerCommand("jsx-tagged.toggle", async () => {
       const { toJsx, toTagged } = await import("transform-jsx");
       const editor = vscode.window.activeTextEditor;
       if (!editor) return;

@@ -1,6 +1,6 @@
 {
-  "scopeName": "text.sld",
-  "injectionSelector": "L:source.js, L:source.ts T:template-string.sld",
+  "scopeName": "text.jsx",
+  "injectionSelector": "L:source.js, L:source.ts T:template-string.jsx",
   "patterns": [
     { "include": "#empty-closing-tag" },
     { "include": "#dynamic-tag" },
@@ -11,31 +11,31 @@
     "empty-closing-tag": {
       "match": "(<\\s*)(//\\s*>)",
       "captures": {
-        "1": { "name": "punctuation.definition.tag.sld" },
-        "2": { "name": "punctuation.definition.tag.sld" }
+        "1": { "name": "punctuation.definition.tag.jsx" },
+        "2": { "name": "punctuation.definition.tag.jsx" }
       }
     },
     "dynamic-tag": {
       "begin": "(<\\s*/?)\\s*(\\$\\{)([^}]*)(\\})",
       "beginCaptures": {
-        "1": { "name": "punctuation.definition.tag.sld" },
+        "1": { "name": "punctuation.definition.tag.jsx" },
         "2": { "name": "punctuation.definition.template-expression.begin.ts" },
-        "3": { "name": "entity.name.class.sld" },
+        "3": { "name": "entity.name.class.jsx" },
         "4": { "name": "punctuation.definition.template-expression.end.ts" }
       },
       "end": "(\\s*/?\\s*>)",
       "endCaptures": {
-        "1": { "name": "punctuation.definition.tag.sld" }
+        "1": { "name": "punctuation.definition.tag.jsx" }
       },
       "patterns": [{ "include": "#tag-stuff" }]
     },
     "tag": {
       "begin": "(<\\s*/?)\\s*(?=[a-zA-Z])",
       "beginCaptures": {
-        "1": { "name": "punctuation.definition.tag.sld" }
+        "1": { "name": "punctuation.definition.tag.jsx" }
       },
       "end": "\\s*/?\\s*>",
-      "endCaptures": { "0": { "name": "punctuation.definition.tag.sld" } },
+      "endCaptures": { "0": { "name": "punctuation.definition.tag.jsx" } },
       "patterns": [{ "include": "#tag-stuff" }]
     },
     "tag-stuff": {
@@ -44,28 +44,28 @@
         { "include": "#string-substitution" },
         {
           "match": "(?<=<\\s*/?\\s*)[A-Z][\\w\\-\\.]*",
-          "name": "entity.name.class.sld"
+          "name": "entity.name.class.jsx"
         },
         {
           "match": "(?<=<\\s*/?\\s*)[a-z][\\w\\-\\.]*",
-          "name": "entity.name.tag.sld"
+          "name": "entity.name.tag.jsx"
         },
-        { "name": "keyword.operator.assignment.sld", "match": "\\s*=\\s*" },
-        { "name": "variable.parameter.sld", "match": "[a-zA-Z_][\\w\\-\\.:]*" },
-        { "name": "variable.parameter.sld.spread", "match": "\\.\\.\\." }
+        { "name": "keyword.operator.assignment.jsx", "match": "\\s*=\\s*" },
+        { "name": "variable.parameter.jsx", "match": "[a-zA-Z_][\\w\\-\\.:]*" },
+        { "name": "variable.parameter.jsx.spread", "match": "\\.\\.\\." }
       ]
     },
     "inside-string": {
       "patterns": [
         {
-          "name": "string.quoted.sld",
+          "name": "string.quoted.jsx",
           "begin": "(?<==\\s*)(\"|')",
           "beginCaptures": {
-            "1": { "name": "punctuation.definition.string.begin.sld" }
+            "1": { "name": "punctuation.definition.string.begin.jsx" }
           },
           "end": "(?<!\\\\)\\1",
           "endCaptures": {
-            "1": { "name": "punctuation.definition.string.end.sld" }
+            "1": { "name": "punctuation.definition.string.end.jsx" }
           },
           "patterns": [{ "include": "#string-substitution" }]
         }
@@ -87,16 +87,16 @@
     "comment": {
       "patterns": [
         {
-          "name": "comment.block.sld",
+          "name": "comment.block.jsx",
           "begin": "<!--",
           "beginCaptures": {
-            "0": { "name": "punctuation.definition.comment.sld" }
+            "0": { "name": "punctuation.definition.comment.jsx" }
           },
           "end": "-->",
           "endCaptures": {
-            "0": { "name": "punctuation.definition.comment.sld" }
+            "0": { "name": "punctuation.definition.comment.jsx" }
           },
-          "contentName": "comment.block.sld"
+          "contentName": "comment.block.jsx"
         }
       ]
     }

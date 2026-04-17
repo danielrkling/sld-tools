@@ -1,10 +1,10 @@
 {
   "fileTypes": [],
-  "injectionSelector": "L:meta.embedded.block.sld meta.tag",
+  "injectionSelector": "L:meta.embedded.block.jsx meta.tag",
   "patterns": [
     {
       "include": "source.ts#template-substitution-element"
     }
   ],
-  "scopeName": "text.lit-sld.string.injection"
+  "scopeName": "text.lit-jsx.string.injection"
 }

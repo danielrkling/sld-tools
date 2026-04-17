@@ -1,7 +1,7 @@
 {
   "name": "sld-vs-code",
-  "displayName": "sld - solid-js Tagged Templates",
-  "description": "Syntax highlighting for sld tagged template literals with JSX-like syntax.",
+  "displayName": "JSX Tagged Templates",
+  "description": "Syntax highlighting and language support for JSX tagged template literals.",
   "publisher": "danielrkling",
   "repository": {
     "url": "https://github.com/danielrkling/sld-tools"
@@ -14,8 +14,7 @@
     "Programming Languages"
   ],
   "keywords": [
-    "solid-js",
-    "sld",
+    "jsx",
     "tagged templates"
   ],
   "main": "./dist/extension.js",
@@ -28,9 +27,9 @@
   ],
   "contributes": {
     "configuration": {
-      "title": "SLD Tools",
+      "title": "JSX Tagged Templates",
       "properties": {
-        "sld-tools.preferredTag": {
+        "jsx-tagged.preferredTag": {
           "type": "string",
           "default": "jsx",
           "enum": ["jsx", "sld"],
@@ -40,15 +39,14 @@
     },
     "languages": [
       {
-        "id": "sld",
+        "id": "jsx-tagged",
         "extensions": [
-          ".sld"
+          ".jsxt"
         ],
         "aliases": [
-          "SLD",
-          "sld"
-        ],
-        "configuration": "./sld.language-configuration.json"
+          "JSX Tagged",
+          "jsxt"
+        ]
       }
     ],
     "grammars": [
@@ -61,10 +59,10 @@
           "source.tsx",
           "text.html"
         ],
-        "scopeName": "text.lit-sld",
-        "path": "./syntaxes/lit-sld.json",
+        "scopeName": "text.lit-jsx",
+        "path": "./syntaxes/lit-jsx.json",
         "embeddedLanguages": {
-          "meta.embedded.block.sld": "sld"
+          "meta.embedded.block.jsx": "jsx-tagged"
         }
       },
       {
@@ -76,21 +74,21 @@
           "source.tsx",
           "text.html"
         ],
-        "scopeName": "text.lit-sld.string.injection",
-        "path": "./syntaxes/lit-sld-string-injection.json",
+        "scopeName": "text.lit-jsx.string.injection",
+        "path": "./syntaxes/lit-jsx-string-injection.json",
         "embeddedLanguages": {
           "meta.template.expression.ts": "typescript"
         }
       },
       {
-        "language": "sld",
-        "scopeName": "text.sld",
-        "path": "./syntaxes/sld.json"
+        "language": "jsx-tagged",
+        "scopeName": "text.jsx",
+        "path": "./syntaxes/jsx.json"
       }
     ],
     "formatters": [
       {
-        "id": "sld Formatter",
+        "id": "jsx Formatter",
         "languages": [
           "javascript",
           "typescript"
@@ -104,21 +102,21 @@
     ],
     "commands": [
       {
-        "command": "sld-tools.convertToJsx",
-        "title": "SLD Tools: Convert Tagged Templates to JSX"
+        "command": "jsx-tagged.convertToJsx",
+        "title": "JSX Tagged: Convert to jsx tag"
       },
       {
-        "command": "sld-tools.convertToSld",
-        "title": "SLD Tools: Convert JSX to Tagged Templates"
+        "command": "jsx-tagged.convertToSld",
+        "title": "JSX Tagged: Convert to sld tag"
       },
       {
-        "command": "sld-tools.toggle",
-        "title": "SLD Tools: Toggle (Smart Convert)"
+        "command": "jsx-tagged.toggle",
+        "title": "JSX Tagged: Toggle (Smart Convert)"
       }
     ],
     "keybindings": [
       {
-        "command": "sld-tools.toggle",
+        "command": "jsx-tagged.toggle",
         "key": "ctrl+shift+j",
         "mac": "cmd+shift+j",
         "when": "editorTextFocus && (language == 'typescript' || language == 'typescriptreact' || language == 'javascript' || language == 'javascriptreact')"
