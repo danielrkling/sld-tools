@@ -1,5 +1,4 @@
 import * as Diff from "diff";
-import { OffsetMapping } from "./transform-types";
 
 export interface MappingResult {
   mappings: OffsetMapping[];
@@ -94,4 +93,8 @@ export function getTaggedPosition(
   }
 
   return newPosition;
+}
+export interface OffsetMapping {
+  taggedPosition: number;
+  jsxPosition: number;
 }

@@ -2,6 +2,7 @@
   "compilerOptions": {
     "target": "ESNext",
     "module": "ESNext",
+    "strict": true,
     "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
@@ -14,7 +15,8 @@
     "resolveJsonModule": true,
     "plugins": [
       {
-        "name": "ts-plugin-jsx"
+        "name": "ts-plugin-jsx",
+        "prefix": "jsx"
       }
     ]
   },

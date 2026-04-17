@@ -99,9 +99,6 @@
     ],
     "typescriptServerPlugins": [
       {
-        "name": "sld-ts-plugin"
-      },
-      {
         "name": "ts-plugin-jsx"
       }
     ],
@@ -137,9 +134,10 @@
     "sld-ts-plugin": "file:../sld-ts-plugin",
     "sld-parse": "file:../sld-parse",
     "transform-jsx": "file:../transform-jsx",
-    "ts-plugin-jsx": "file:../ts-plugin-jsx",
+    "typescript": "^5.0.0",
     "vitest": "^2.0.0"
   },
+  "dependencies": {},
   "scripts": {
     "build:web": "esbuild ./src/extension.ts --bundle --format=cjs --outfile=./dist/web/extension.js --external:vscode --minify",
     "build": "esbuild ./src/extension.ts --bundle --format=cjs --outfile=./dist/extension.js --external:vscode --external:typescript --bundle --platform=node",

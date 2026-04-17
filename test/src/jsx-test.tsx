@@ -2,9 +2,12 @@ function jsx(strings: TemplateStringsArray, ...values: any[]) {
   return strings.reduce((acc, str, i) => acc + str + (values[i] ?? ""), "");
 }
 
-const greeting = "World";
-const el = jsx`<div class="foo">Hello ${greeting}<div>`;
+function Button(props: { label: string, number?: number }) {
+  return <button>{props.label}</button>;
+}
 
-const el2 = jsx`<div>test</div>`;
 
-const el3 = jsx`<span class="bar">content</span>`;
+const wrongPropJSX = <Button number={"fa"} label={13} />;
+//These errors should also show below in the template string
+
+const wrongPropTJSX = jsx`<Button number=${"fa"} label=${13} />`;

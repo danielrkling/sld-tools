@@ -11,6 +11,11 @@
     "build:vs-code": "npm run build --workspace=sld-vs-code",
     "watch:ts-plugin": "npm run watch --workspace=sld-ts-plugin",
     "watch:vs-code": "npm run watch --workspace=sld-vs-code",
-    "build": "npm run build:ts-plugin && npm run build:ts-plugin-jsx && npm run build:vs-code"
+    "build": "npm run build:ts-plugin && npm run build:ts-plugin-jsx && npm run build:vs-code",
+    "build:all-plugins": "npm run build --workspace=parse-jsx && npm run build --workspace=transform-jsx && npm run build:ts-plugin-jsx",
+    "sync:ts-plugin-jsx": "node scripts/sync-plugin.js",
+    "prebuild:vs-code": "npm run sync:ts-plugin-jsx",
+    "pretest:vs-code": "npm run sync:ts-plugin-jsx",
+    "test:vs-code": "npm run test --workspace=sld-vs-code"
   }
 }

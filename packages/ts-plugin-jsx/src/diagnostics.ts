@@ -2,7 +2,7 @@ import * as ts from "typescript/lib/tsserverlibrary";
 import { ParseJSXError } from "parse-jsx";
 import { getJsxTemplateNodes, getJsxTemplateAtPosition, JsxTemplateNode } from "./finder";
 import { parseJsxTemplate } from "./parser";
-import { toJsxWithMappings, getJsxPosition } from "transform-jsx";
+import { toJsxWithMappings, getJsxPosition, getTaggedPosition } from "transform-jsx";
 
 export interface PluginConfig {
   jsxImportSource?: string;
@@ -37,9 +37,89 @@ export function getSemanticDiagnostics(
         }
       }
     }
+
+    const typeErrors = getTypeErrorsForTemplate(
+      ts,
+      program,
+      sourceFile,
+      templateNode
+    );
+    diagnostics.push(...typeErrors);
   }
 
   return diagnostics;
+}
+
+function getTypeErrorsForTemplate(
+  ts: typeof import("typescript"),
+  program: ts.Program,
+  sourceFile: ts.SourceFile,
+  templateNode: JsxTemplateNode
+): ts.Diagnostic[] {
+  const fullText = sourceFile.getFullText();
+  const fileName = sourceFile.fileName;
+  const templateText = fullText.substring(templateNode.start, templateNode.end);
+  
+  const { code: jsxCode, mappings } = toJsxWithMappings(templateText);
+  
+  const jsxSourceFile = ts.createSourceFile(
+    fileName,
+    jsxCode,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX
+  );
+
+  const jsxProgram = ts.createProgram(
+    [fileName],
+    program.getCompilerOptions(),
+    {
+      getSourceFile: (name) => (name === fileName ? jsxSourceFile : undefined),
+      getDefaultLibFileName: () => "lib.d.ts",
+      writeFile: () => {},
+      getCurrentDirectory: () => program.getCurrentDirectory(),
+      getDirectories: () => [],
+      getCanonicalFileName: (f) => f,
+      useCaseSensitiveFileNames: () => true,
+      getNewLine: () => "\n",
+      fileExists: (f) => f === fileName,
+      readFile: () => "",
+    }
+  );
+
+  const jsxDiagnostics = jsxProgram.getSyntacticDiagnostics(jsxSourceFile);
+  const semanticDiagnostics = jsxProgram.getSemanticDiagnostics(jsxSourceFile);
+  const allDiagnostics = [...jsxDiagnostics, ...semanticDiagnostics];
+
+  const result: ts.Diagnostic[] = [];
+
+  for (const diag of allDiagnostics) {
+    if (!diag.start) continue;
+
+    const taggedPosition = getTaggedPosition(
+      diag.start,
+      mappings.mappings.reverseMappings,
+      templateText.length
+    );
+
+    if (taggedPosition === undefined) continue;
+
+    const actualPosition = templateNode.start + taggedPosition + 1;
+
+    result.push({
+      file: sourceFile,
+      start: actualPosition,
+      length: diag.length || 1,
+      messageText: typeof diag.messageText === "string" 
+        ? diag.messageText 
+        : diag.messageText.messageText,
+      category: diag.category,
+      code: diag.code,
+      source: "ts-plugin-jsx",
+    });
+  }
+
+  return result;
 }
 
 function createDiagnosticFromError(
@@ -160,17 +240,33 @@ export function getQuickInfoAtPosition(
   fileName: string,
   position: number
 ): ts.QuickInfo | undefined {
+  console.log("[ts-plugin-jsx] getQuickInfoAtPosition called at", position, "file:", fileName);
+  
   const sourceFile = program.getSourceFile(fileName);
-  if (!sourceFile) return undefined;
+  if (!sourceFile) {
+    console.log("[ts-plugin-jsx] No source file");
+    return undefined;
+  }
 
   const templateNode = getJsxTemplateAtPosition(ts, sourceFile, position);
-  if (!templateNode) return undefined;
+  if (!templateNode) {
+    console.log("[ts-plugin-jsx] No template node found");
+    return undefined;
+  }
+  console.log("[ts-plugin-jsx] Found template node");
 
   const fullText = sourceFile.getFullText();
   const { code: jsxCode, mappings } = toJsxWithMappings(fullText);
-  const jsxPosition = getJsxPosition(position, mappings.mappings, jsxCode.length);
+  console.log("[ts-plugin-jsx] JSX code:", jsxCode.substring(0, 100));
+  console.log("[ts-plugin-jsx] Mappings count:", mappings.mappings.length);
   
-  if (jsxPosition === undefined) return undefined;
+  const jsxPosition = getJsxPosition(position, mappings.mappings, jsxCode.length);
+  console.log("[ts-plugin-jsx] JSX position:", jsxPosition);
+  
+  if (jsxPosition === undefined) {
+    console.log("[ts-plugin-jsx] No mapped JSX position");
+    return undefined;
+  }
 
   const jsxSourceFile = ts.createSourceFile(
     fileName,

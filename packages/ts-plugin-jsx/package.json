@@ -38,6 +38,10 @@
   },
   "dependencies": {
     "parse-jsx": "file:../parse-jsx",
+    "solid-js": "^1.9.12",
     "transform-jsx": "file:../transform-jsx"
+  },
+  "directories": {
+    "test": "tests"
   }
 }

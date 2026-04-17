@@ -1,0 +1,1 @@
+const a = jsx`<div><span>nested</span></div>`;
