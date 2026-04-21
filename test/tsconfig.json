@@ -16,7 +16,7 @@
     "plugins": [
       {
         "name": "ts-plugin-jsx",
-        "prefix": "jsx"
+        "tags": ["jsx", "html", "svg"]
       }
     ]
   },

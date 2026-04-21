@@ -1,5 +1,5 @@
 import type * as tsModule from "typescript/lib/tsserverlibrary";
-import { getTaggedPosition, toJsxWithMappings } from "transform-jsx";
+import { createJsxTransformer, getTaggedPosition } from "transform-jsx";
 
 function createSyntheticHost(
   originalProgram: tsModule.Program,
@@ -30,6 +30,7 @@ function createSyntheticHost(
 function analyzeJsx(
   fileName: string,
   info: tsModule.server.PluginCreateInfo,
+  toJsxWithMappings: (code: string) => { code: string; mappings: any },
   ts: typeof tsModule
 ): { jsxProgram: tsModule.Program; jsxSourceFile: tsModule.SourceFile; mappings: any; jsxCode: string } | undefined {
   const originalProgram = info.languageService.getProgram();
@@ -80,6 +81,12 @@ function init(modules: { typescript: typeof tsModule }) {
   const ts = modules.typescript;
 
   function create(info: tsModule.server.PluginCreateInfo) {
+    // Get tags from config, default to ['jsx']
+    const tags: string[] = info.config?.tags ?? ["jsx"];
+    
+    // Create transformer with tags from config and ts instance
+    const { toJsxWithMappings } = createJsxTransformer(tags, ts);
+
     const proxy: tsModule.LanguageService = Object.create(null);
     for (let k of Object.keys(info.languageService) as Array<keyof tsModule.LanguageService>) {
       const x = info.languageService[k]!;
@@ -88,9 +95,10 @@ function init(modules: { typescript: typeof tsModule }) {
     }
 
     proxy.getSemanticDiagnostics = (fileName) => {
-      const jsx = analyzeJsx(fileName, info, ts);
+      const jsx = analyzeJsx(fileName, info, toJsxWithMappings, ts);
       if (!jsx) {
-        return undefined as unknown as tsModule.Diagnostic[]; // Let default TypeScript handle it
+        // Let default TypeScript handle it
+        return info.languageService.getSemanticDiagnostics(fileName);
       }
 
       const { jsxProgram, jsxSourceFile, mappings, jsxCode } = jsx;
