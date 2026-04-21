@@ -3,6 +3,26 @@ import * as ts from "typescript";
 import * as path from "path";
 import * as fs from "fs";
 import { toJsxWithMappings, getJsxPosition } from "transform-jsx";
+import { tokenize, parse, ELEMENT_NODE, TEXT_NODE, COMMENT_NODE, STRING_PROP, EXPRESSION_PROP } from "parse-jsx";
+
+const enum TokenType {
+  element = "element",
+  attribute = "attribute",
+  property = "property",
+  string = "string",
+  comment = "comment",
+  text = "text",
+  keyword = "keyword",
+}
+
+const tokenTypeMap: Record<string, TokenType> = {
+  element: TokenType.element,
+  attribute: TokenType.attribute,
+  property: TokenType.property,
+  string: TokenType.string,
+  comment: TokenType.comment,
+  text: TokenType.text,
+};
 
 function getTypeScriptLibPath(): string {
   return path.dirname(require.resolve("typescript"));
@@ -292,6 +312,158 @@ export async function activate(context: vscode.ExtensionContext) {
   //     }
   //   )
   // );
+
+  const semanticTokensProvider: vscode.DocumentSemanticTokensProvider = {
+    provideDocumentSemanticTokens(
+      document: vscode.TextDocument,
+      token: vscode.CancellationToken
+    ): vscode.ProviderResult<vscode.SemanticTokens> {
+      const text = document.getText();
+      const tokens = new vscode.SemanticTokensBuilder();
+      
+      const templateRegex = /jsx`[\s\S]*?`/g;
+      let match;
+      
+      while ((match = templateRegex.exec(text)) !== null) {
+        const templateStart = match.index;
+        const templateContent = match[0];
+        const tagNameEnd = templateContent.indexOf("`");
+        const strings: string[] = [];
+        
+        let remaining = templateContent.slice(tagNameEnd + 1, -1);
+        const backtickIndex = remaining.indexOf("`");
+        
+        if (backtickIndex === -1) {
+          strings.push(remaining);
+        } else {
+          while (backtickIndex !== -1) {
+            strings.push(remaining.slice(0, backtickIndex));
+            remaining = remaining.slice(backtickIndex + 1);
+          }
+        }
+        
+        const templateStrings = strings as unknown as TemplateStringsArray;
+        
+        try {
+          const jsxTokens = tokenize(templateStrings);
+          const ast = parse(jsxTokens);
+          
+          function getAbsolutePosition(segment: number, start: number): number {
+            let offset = templateStart + tagNameEnd + 1;
+            for (let i = 0; i < segment; i++) {
+              offset += strings[i].length + 2;
+            }
+            offset += start;
+            return offset;
+          }
+          
+          function visitNode(node: any) {
+            if (node.type === ELEMENT_NODE) {
+              const openTag = node.tokens?.openTag;
+              if (openTag?.name) {
+                const absPos = getAbsolutePosition(openTag.name.segment, openTag.name.start);
+                const endPos = getAbsolutePosition(openTag.name.segment, openTag.name.end);
+                tokens.push(
+                  new vscode.Range(
+                    document.positionAt(absPos),
+                    document.positionAt(endPos)
+                  ),
+                  TokenType.element,
+                  []
+                );
+              }
+              
+              for (const prop of node.props || []) {
+                if (prop.tokens?.name) {
+                  const absPos = getAbsolutePosition(prop.tokens.name.segment, prop.tokens.name.start);
+                  const endPos = getAbsolutePosition(prop.tokens.name.segment, prop.tokens.name.end);
+                  tokens.push(
+                    new vscode.Range(
+                      document.positionAt(absPos),
+                      document.positionAt(endPos)
+                    ),
+                    prop.type === STRING_PROP ? TokenType.attribute : TokenType.property,
+                    []
+                  );
+                }
+                
+                if (prop.tokens?.string) {
+                  const absPos = getAbsolutePosition(prop.tokens.string.segment, prop.tokens.string.start);
+                  const endPos = getAbsolutePosition(prop.tokens.string.segment, prop.tokens.string.end);
+                  tokens.push(
+                    new vscode.Range(
+                      document.positionAt(absPos),
+                      document.positionAt(endPos)
+                    ),
+                    TokenType.string,
+                    []
+                  );
+                }
+              }
+              
+              for (const child of node.children || []) {
+                visitNode(child);
+              }
+            } else if (node.type === TEXT_NODE) {
+              if (node.tokens?.text) {
+                const absPos = getAbsolutePosition(node.tokens.text.segment, node.tokens.text.start);
+                const endPos = getAbsolutePosition(node.tokens.text.segment, node.tokens.text.end);
+                tokens.push(
+                  new vscode.Range(
+                    document.positionAt(absPos),
+                    document.positionAt(endPos)
+                  ),
+                  TokenType.text,
+                  []
+                );
+              }
+            } else if (node.type === COMMENT_NODE) {
+              if (node.tokens?.start) {
+                const absStart = getAbsolutePosition(node.tokens.start.segment, node.tokens.start.start);
+                const absEnd = getAbsolutePosition(node.tokens.end.segment, node.tokens.end.end);
+                tokens.push(
+                  new vscode.Range(
+                    document.positionAt(absStart),
+                    document.positionAt(absEnd)
+                  ),
+                  TokenType.comment,
+                  []
+                );
+              }
+            }
+          }
+          
+          for (const child of ast.children) {
+            visitNode(child);
+          }
+        } catch (e) {
+          outputChannel.appendLine(`Parse error: ${e}`);
+        }
+      }
+      
+      return tokens.build();
+    },
+  };
+
+  context.subscriptions.push(
+    vscode.languages.registerDocumentSemanticTokensProvider(
+      [
+        { language: "javascript", scheme: "file" },
+        { language: "javascript", scheme: "untitled" },
+        { language: "javascriptreact", scheme: "file" },
+        { language: "javascriptreact", scheme: "untitled" },
+        { language: "typescript", scheme: "file" },
+        { language: "typescript", scheme: "untitled" },
+        { language: "typescriptreact", scheme: "file" },
+        { language: "typescriptreact", scheme: "untitled" },
+      ],
+      semanticTokensProvider,
+      new vscode.SemanticTokensLegend(
+        ["element", "attribute", "property", "string", "comment", "text"],
+        []
+      )
+    )
+  );
 }
 
 export async function deactivate(): Promise<void> {}

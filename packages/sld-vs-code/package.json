@@ -132,6 +132,7 @@
     "sld-ts-plugin": "file:../sld-ts-plugin",
     "sld-parse": "file:../sld-parse",
     "transform-jsx": "file:../transform-jsx",
+    "parse-jsx": "file:../parse-jsx",
     "typescript": "^5.0.0",
     "vitest": "^2.0.0"
   },
