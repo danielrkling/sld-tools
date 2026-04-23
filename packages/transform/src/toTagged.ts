@@ -60,9 +60,6 @@ function findFirstJSXElement(
     return node;
   }
 
-  if (ts.isJsxExpression(node)) {
-    return undefined;
-  }
 
   return ts.forEachChild(node, findFirstJSXElement);
 }
@@ -85,12 +82,14 @@ function convertAttributes(
           result += ` ${name}=\${${exprText}}`;
         } else if (ts.isStringLiteral(value)) {
           result += ` ${name}="${value.text}"`;
-        } else {
-          result += ` \${${text}}`;
         }
       } else {
         result += ` ${name}`;
       }
+    } else if (ts.isJsxSpreadAttribute(attr)) {
+      const expression = attr.expression;
+      const text = sourceFile.text.slice(expression.getStart(), expression.getEnd());
+      result += " ...${" + text + "}";
     }
   }
 
@@ -158,14 +157,14 @@ function convertJsxElementChildren(
   return result;
 }
 
-function getTagNameText(tagName: any): string {
+function getTagNameText(tagName: ts.JsxTagNameExpression): string {
   if (ts.isIdentifier(tagName)) {
     return tagName.text;
   }
   return "";
 }
 
-function isComponent(tagName: any): boolean {
+function isComponent(tagName: ts.JsxTagNameExpression): boolean {
   if (ts.isIdentifier(tagName)) {
     const firstChar = tagName.text.charAt(0);
     return firstChar === firstChar.toUpperCase() && firstChar !== firstChar.toLowerCase();

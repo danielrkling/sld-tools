@@ -46,3 +46,35 @@ describe("transforms", () => {
     });
   });
 });
+
+
+describe("one-way transforms", () => {
+  it("child fragments", () => {
+    const jsx = "<div><></></div>";
+    const expected = "jsx`<div></div>`";
+    const result = toTagged(jsx);
+    expect(result.trim()).toBe(expected.trim());
+  }
+  );
+  
+  it("self-closing tags", () => {
+    const jsx = "<div><img /></div>";
+    const expected = "jsx`<div><img /></div>`";
+    const result = toTagged(jsx);
+    expect(result.trim()).toBe(expected.trim());
+  });
+
+  it("components", () => {
+    const tagged = "jsx`<div><Button /></div>`";
+    const expected = "jsx`<div><Button /></div>`";
+    const result = toTagged(tagged);
+    expect(result.trim()).toBe(expected.trim());
+  });
+
+  it("empty expressions", () => {
+    const jsx = "<div>{}</div>";
+    const expected = "jsx`<div></div>`";
+    const result = toTagged(jsx);
+    expect(result.trim()).toBe(expected.trim());
+  });
+});

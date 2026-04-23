@@ -140,5 +140,123 @@ describe("position mapping", () => {
       expect(mappings.length).toBeGreaterThan(0);
       expect(reverseMappings.length).toBe(mappings.length);
     });
+
+    it("should handle equal strings (no change)", () => {
+      const code = "const x = 1;";
+      const { mappings, reverseMappings } = computeMappings(code, code);
+      
+      expect(mappings.length).toBeGreaterThan(0);
+      expect(reverseMappings.length).toBe(mappings.length);
+    });
+  });
+
+  describe("edge cases", () => {
+    it("should handle tagged template without children", () => {
+      const result = toJsx("jsx`<div></div>`");
+      expect(result).toBe("<div></div>");
+    });
+
+    it("should handle empty tagged template", () => {
+      const result = toJsx("jsx`<${Foo}></${Foo}>");
+      expect(result).toBe("<Foo></Foo>");
+    });
+
+    it("should handle lowercase component (not uppercase)", () => {
+      const result = toJsx("jsx`<foo />");
+      expect(result).toBe("<foo />");
+    });
+
+    it("should handle multiple elements at root level", () => {
+      const input = "jsx`<div></div><span></span>`";
+      const result = toJsx(input);
+      expect(result).toBe("<><div></div><span></span></>");
+    });
+
+    it("should handle self-closing tag as only child", () => {
+      const result = toJsx("jsx`<div><img /></div>`");
+      expect(result).toBe("<div><img /></div>");
+    });
+
+    it("should handle components", () => {
+      const result = toJsx("jsx`<Button><img /></Button>`");
+      expect(result).toBe("<Button><img /></Button>");
+    });
+
+    it("should handle deeply nested structure", () => {
+      const result = toJsx("jsx`<div><span><strong>text</strong></span></div>`");
+      expect(result).toBe("<div><span><strong>text</strong></span></div>");
+    });
+
+    it("should handle JSX to tagged with whitespace between children", () => {
+      const input = "const x = <div>hello    <span>world</span></div>;";
+      const result = toTagged(input);
+      expect(result).toContain("jsx`");
+    });
+
+    it("should handle attribute expression with string literal value", () => {
+      const input = "const x = <div data-msg=\"hello\"></div>;";
+      const result = toTagged(input);
+      expect(result).toContain('data-msg="hello"');
+    });
+
+    it("should handle attribute with unknown/undefined expression", () => {
+      const input = "const x = <div data={someUnknown}></div>;";
+      const result = toTagged(input);
+      expect(result).toContain("data=${someUnknown}");
+    });
+
+    it("should handle positions beyond reverse mapping boundary returning undefined", () => {
+      const input = "const x = jsx`<div></div>`;";
+      const { code, mappings } = toJsxWithMappings(input);
+      expect(getTaggedPosition(code.length + 100, mappings.reverseMappings, input.length)).toBeUndefined();
+    });
+
+    it("should handle uppercase component in jsx to tagged", () => {
+      const result = toTagged("const x = <Component></Component>;");
+      expect(result).toContain("${Component}");
+    });
+
+    it("should handle uppercase component self-closing", () => {
+      const result = toTagged("const x = <Component />");
+      expect(result).toContain("${Component}");
+    });
+
+    it("should handle uppercase component with attributes", () => {
+      const result = toTagged("const x = <MyComp foo=\"bar\"></MyComp>;");
+      expect(result).toContain("${MyComp}");
+    });
+
+    it("should handle jsx fragment", () => {
+      const result = toTagged("const x = <>hello</>;");
+      expect(result).toContain("jsx`");
+    });
+
+    it("should handle jsx text child", () => {
+      const result = toTagged("const x = <div>hello world</div>;");
+      expect(result).toContain("hello world");
+    });
+
+    it("should handle boolean attribute in jsx", () => {
+      const result = toTagged("const x = <input disabled></input>;");
+      expect(result).toContain("disabled");
+    });
+
+    it("should handle spread in jsx", () => {
+      const result = toTagged("const x = <div {...props}></div>;");
+      expect(result).toContain("jsx`");
+    });
+
+    it("should return undefined for getJsxPosition when position is out of bounds", () => {
+      const { code, mappings } = toJsxWithMappings("const x = jsx`<div></div>`;");
+      expect(getJsxPosition(-10, mappings.mappings, code.length)).toBeUndefined();
+      expect(getJsxPosition(code.length + 10, mappings.mappings, code.length)).toBeUndefined();
+    });
+
+    it("should return undefined for getTaggedPosition when position is out of bounds", () => {
+      const input = "const x = jsx`<div></div>`;";
+      const { code, mappings } = toJsxWithMappings(input);
+      expect(getTaggedPosition(-10, mappings.reverseMappings, input.length)).toBeUndefined();
+      expect(getTaggedPosition(code.length + 10, mappings.reverseMappings, input.length)).toBeUndefined();
+    });
   });
 });

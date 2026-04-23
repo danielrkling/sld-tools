@@ -82,7 +82,7 @@ export function createJsxTransformer(
     sourceCode: string,
   ): string {
     if (!parsed.children || parsed.children.length === 0) {
-      return "";
+      return "<></>";
     }
 
     const children = parsed.children;
@@ -111,8 +111,8 @@ export function createJsxTransformer(
       name = sourceCode.slice(expr.getStart(), expr.getEnd());
     }
 
-    const children = element.children || [];
-    const props = element.props || [];
+    const children = element.children;
+    const props = element.props;
 
     const isSelfClosing = element.tokens?.openTag?.slash !== undefined;
 
@@ -123,8 +123,7 @@ export function createJsxTransformer(
       const propType = prop.type;
 
       if (
-        propType === "BOOLEAN" ||
-        (propType === undefined && propValue === true)
+        propType === "BOOLEAN"
       ) {
         attrs += ` ${propName}`;
       } else if (propType === "STRING") {
@@ -145,7 +144,7 @@ export function createJsxTransformer(
       if (child.type === "ELEMENT") {
         childrenStr += printJsxElement(child, expressions, sourceCode);
       } else if (child.type === "TEXT") {
-        childrenStr += child.value || "";
+        childrenStr += child.value;
       } else if (child.type === "EXPRESSION" && child.value !== undefined) {
         const expr = expressions[child.value];
         const exprText = sourceCode.slice(expr.getStart(), expr.getEnd());
