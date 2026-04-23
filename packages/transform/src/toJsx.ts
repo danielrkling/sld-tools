@@ -1,4 +1,4 @@
-import { tokenize, parse, RootNode } from "parse-jsx";
+import { tokenize, parse, RootNode } from "parse-tagged-jsx";
 import { computeMappings, MappingResult } from "./mappings";
 import type * as tsModule from "typescript";
 
