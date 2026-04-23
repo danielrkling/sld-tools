@@ -3,7 +3,7 @@ import { createSignal, onCleanup } from "solid-js";
 
 // A nested child component
 function TaskItem(props) {
-  return jsx`<li class="task-item">
+  return html`<li class="task-item">
       <span style=${{
         "text-decoration": props.completed ? "line-through" : "none",
       }}>

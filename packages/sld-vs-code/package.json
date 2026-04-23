@@ -34,6 +34,22 @@
           "default": "jsx",
           "enum": ["jsx", "sld"],
           "description": "Preferred tag name for JSX templates (jsx or sld)"
+        },
+        "jsx-tagged.semanticTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": ["jsx", "sld"],
+          "description": "Tag names to provide semantic highlighting for"
+        },
+        "jsx-tagged.customTags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": ["jsx", "sld"],
+          "description": "Custom tag names for TextMate grammar (syntax highlighting). Changing this requires reloading the extension."
         }
       }
     },
@@ -60,7 +76,7 @@
           "text.html"
         ],
         "scopeName": "text.lit-jsx",
-        "path": "./syntaxes/lit-jsx.json",
+        "path": "./syntaxes/lit-jsx-generated.json",
         "embeddedLanguages": {
           "meta.embedded.block.jsx": "jsx-tagged"
         }
@@ -101,6 +117,10 @@
       }
     ],
     "commands": [
+      {
+        "command": "jsx-tagged.regenerateGrammar",
+        "title": "JSX Tagged: Regenerate Grammar"
+      },
       {
         "command": "jsx-tagged.convertToJsx",
         "title": "JSX Tagged: Convert to jsx tag"
