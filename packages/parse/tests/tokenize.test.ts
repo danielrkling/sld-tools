@@ -12,6 +12,7 @@ import {
   COMMENT_START_TOKEN,
   COMMENT_END_TOKEN,
   IdentifierToken,
+  SPREAD_TOKEN,
 } from "../src/index";
 
 function tokenizeTemplate(strings: TemplateStringsArray, ...values: any[]) {
@@ -185,6 +186,8 @@ describe("attribute values", () => {
     ]);
   });
 
+
+
   it("should handle URL-like attribute values", () => {
     const tokens = tokenizeTemplate`<a href="https://example.com/path?query=value&other=test#section">`;
 
@@ -295,6 +298,20 @@ describe("expressions", () => {
         t.type === IDENTIFIER_TOKEN && (t.value as string).includes("data"),
     );
     expect(attrNames.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("should handle spread attributes", () => {
+    const props = { id: "my-id", className: "my-class" };
+    const tokens = tokenizeTemplate`<div ...${props} />`;
+
+    expect(tokens).toEqual([
+      { type: OPEN_TAG_TOKEN, segment: 0, start: 0, end: 1 },
+      { type: IDENTIFIER_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
+      { type: SPREAD_TOKEN, segment: 0, start: 5, end: 8 },
+      { type: EXPRESSION_TOKEN, value: 0 },
+      { type: SLASH_TOKEN, segment: 1, start: 1, end: 2 },
+      { type: CLOSE_TAG_TOKEN, segment: 1, start: 2, end: 3 },
+    ]);
   });
 });
 
@@ -589,6 +606,10 @@ describe("invalid syntax", () => {
       "Unexpected character: '@'",
     );
   });
+
+  it("should throw with unterminated string", () => {
+    expect(() => tokenizeTemplate`<div id="hello>`).toThrow();
+  });
 });
 
 describe("bad but valid syntaxes", () => {
@@ -669,7 +690,7 @@ describe("comments handling", () => {
     const tokens = tokenizeTemplate`<!-- Comment with ${value} inside -->`;
     expect(tokens).toEqual([
       { type: COMMENT_START_TOKEN, segment: 0, start: 0, end: 4 },
-      { type: TEXT_TOKEN, value: "", segment: 0, start: 18, end: 18 },
+      { type: TEXT_TOKEN, value: " Comment with ", segment: 0, start: 4, end: 18 },
       { type: EXPRESSION_TOKEN, value: 0 },
       { type: TEXT_TOKEN, value: " inside ", segment: 1, start: 0, end: 8 },
       { type: COMMENT_END_TOKEN, segment: 1, start: 8, end: 11 },

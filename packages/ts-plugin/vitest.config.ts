@@ -8,8 +8,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      transformJsx: resolve(__dirname, "../transform-jsx/src/index.ts"),
-      parseJsx: resolve(__dirname, "../parse-jsx/src/index.ts"),
+      transformJsx: resolve(__dirname, "../transform/src/index.ts"),
+      parseJsx: resolve(__dirname, "../parse/src/index.ts"),
     },
   },
 });

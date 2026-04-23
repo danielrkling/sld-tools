@@ -40,7 +40,7 @@
     "@babel/traverse": "^7.29.0",
     "@babel/types": "^8.0.0-rc.2",
     "diff": "^7.0.0",
-    "parse-jsx": "file:../parse-jsx",
+    "transform": "file:../transform",
     "recast": "^0.23.9",
     "typescript": "^5.3.3"
   }

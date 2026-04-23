@@ -2,25 +2,25 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "build:sld-parse",
+      "label": "build:parse",
       "type": "npm",
       "script": "build",
-      "path": "${workspaceFolder}/packages/sld-parse",
+      "path": "${workspaceFolder}/packages/parse",
       "problemMatcher": []
     },
     {
-      "label": "build:sld-ts-plugin",
+      "label": "build:ts-plugin",
       "type": "npm",
       "script": "build",
-      "path": "${workspaceFolder}/packages/sld-ts-plugin",
+      "path": "${workspaceFolder}/packages/ts-plugin",
       "problemMatcher": [],
-      "dependsOn": ["build:sld-parse"]
+      "dependsOn": ["build:parse"]
     },
     {
-      "label": "build:tagged-jsx",
+      "label": "build:vs-code",
       "type": "npm",
       "script": "build",
-      "path": "${workspaceFolder}/packages/tagged-jsx",
+      "path": "${workspaceFolder}/packages/vs-code",
       "problemMatcher": []
     }
   ]

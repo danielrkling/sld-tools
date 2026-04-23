@@ -11,6 +11,8 @@ import {
   STRING_PROP,
   EXPRESSION_PROP,
   SPREAD_PROP,
+  CommentNode,
+  CLOSE_TAG_TOKEN,
 } from "../src/index";
 
 function parseTemplate(strings: TemplateStringsArray, ...values: any[]) {
@@ -188,6 +190,29 @@ describe("parse - expressions", () => {
     expect((result.children[0] as any).name).toBe("div");
     expect((result.children[1] as any).value).toBe(0);
     expect((result.children[2] as any).name).toBe("span");
+  });
+});
+
+describe("parse - dynamic tag names", () => {
+  it("should parse dynamic tag name", () => {
+    const result = parseTemplate`<${"DynamicTag"}/>`;
+
+    const child = result.children[0] as any;
+    expect(child.type).toBe(ELEMENT_NODE);
+    expect(child.name).toBe(0);
+  });
+
+  it("should parse dynamic tag name with children", () => {
+    const result = parseTemplate`<${"Tag"}>Content<//>`;
+
+    const child = result.children[0] as any;
+    expect(child.type).toBe(ELEMENT_NODE);
+    expect(child.name).toBe(0);
+    expect(child.children).toHaveLength(1);
+
+    const text = child.children[0] as any;
+    expect(text.type).toBe(TEXT_NODE);
+    expect(text.value).toBe("Content");
   });
 });
 
@@ -434,6 +459,10 @@ describe("parse - error cases", () => {
   it("should throw descriptive error for missing tag name", () => {
     expect(() => parseTemplate`< >/>`).toThrow("Expected tag name");
   });
+
+  it("should throw for unexptected token in text state", () => {
+    expect(() => parse([{ type: CLOSE_TAG_TOKEN, segment: 0, start: 0, end: 1 }])).toThrow();
+  });
 });
 
 describe("parse - edge cases", () => {
@@ -553,6 +582,7 @@ describe("parse - comments", () => {
     expect(comment.type).toBe(COMMENT_NODE);
     expect(comment.children).toHaveLength(3);
 
+
     expect(comment.children[0].type).toBe(TEXT_NODE);
     expect(comment.children[0].value).toBe(" value: ");
 
@@ -568,7 +598,7 @@ describe("parse - comments", () => {
 
     expect(result.children).toHaveLength(2);
     expect(result.children[0].type).toBe(COMMENT_NODE);
-    expect(result.children[0].children[0].type).toBe(TEXT_NODE);
+    expect((result.children[0] as CommentNode).children[0].type).toBe(TEXT_NODE);
     expect(result.children[1].type).toBe(ELEMENT_NODE);
   });
 });

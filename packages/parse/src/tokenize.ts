@@ -249,7 +249,7 @@ export const tokenize = (strings: TemplateStringsArray | string[]): Token[] => {
           const endComment = str.indexOf("-->", cursor);
 
           if (endComment === -1) {
-            cursor = len;
+            
             tokens.push({
               type: TEXT_TOKEN,
               value: str.slice(cursor),
@@ -257,6 +257,7 @@ export const tokenize = (strings: TemplateStringsArray | string[]): Token[] => {
               start: cursor,
               end: len,
             });
+            cursor = len;
           } else {
             state = STATE_TEXT;
             const value = str.slice(cursor, endComment);

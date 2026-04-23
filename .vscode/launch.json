@@ -7,10 +7,10 @@
       "request": "launch",
       "runtimeExecutable": "${execPath}",
       "args": [
-        "--extensionDevelopmentPath=${workspaceFolder}/packages/tagged-jsx"
+        "--extensionDevelopmentPath=${workspaceFolder}/packages/vs-code"
       ],
       "outFiles": [
-        "${workspaceFolder}/packages/tagged-jsx/dist/**/*.js"
+        "${workspaceFolder}/packages/vs-code/dist/**/*.js"
       ]
     }
   ]
