@@ -1,7 +1,7 @@
 {
-  "name": "ts-plugin-jsx",
+  "name": "ts-plugin-tagged-jsx",
   "version": "1.0.0",
-  "description": "TypeScript language service plugin for jsx tagged templates",
+  "description": "TypeScript language service plugin for tagged JSX templates",
   "main": "dist/index.cjs",
   "types": "dist/index.d.ts",
   "exports": {

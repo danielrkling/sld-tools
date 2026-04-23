@@ -17,10 +17,10 @@
       "dependsOn": ["build:sld-parse"]
     },
     {
-      "label": "build:sld-vs-code",
+      "label": "build:tagged-jsx",
       "type": "npm",
       "script": "build",
-      "path": "${workspaceFolder}/packages/sld-vs-code",
+      "path": "${workspaceFolder}/packages/tagged-jsx",
       "problemMatcher": []
     }
   ]

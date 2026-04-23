@@ -1,10 +1,10 @@
 {
-  "name": "sld-vs-code",
-  "displayName": "JSX Tagged Templates",
+  "name": "tagged-jsx",
+  "displayName": "Tagged JSX Templates",
   "description": "Syntax highlighting and language support for JSX tagged template literals.",
   "publisher": "danielrkling",
   "repository": {
-    "url": "https://github.com/danielrkling/sld-tools"
+    "url": "https://github.com/danielkrling/tagged-jsx"
   },
   "version": "0.0.1",
   "engines": {
@@ -29,26 +29,26 @@
     "configuration": {
       "title": "JSX Tagged Templates",
       "properties": {
-        "jsx-tagged.preferredTag": {
+        "tagged-jsx.preferredTag": {
           "type": "string",
           "default": "jsx",
-          "enum": ["jsx", "sld"],
-          "description": "Preferred tag name for JSX templates (jsx or sld)"
+          "enum": ["jsx", "html"],
+          "description": "Preferred tag name for JSX templates (jsx or html)"
         },
-        "jsx-tagged.semanticTags": {
+        "tagged-jsx.semanticTags": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "default": ["jsx", "sld"],
+          "default": ["jsx", "html"],
           "description": "Tag names to provide semantic highlighting for"
         },
-        "jsx-tagged.customTags": {
+        "tagged-jsx.customTags": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "default": ["jsx", "sld"],
+          "default": ["jsx", "html"],
           "description": "Custom tag names for TextMate grammar (syntax highlighting). Changing this requires reloading the extension."
         }
       }
@@ -113,30 +113,30 @@
     ],
     "typescriptServerPlugins": [
       {
-        "name": "ts-plugin-jsx"
+        "name": "ts-plugin-tagged-jsx"
       }
     ],
     "commands": [
       {
-        "command": "jsx-tagged.regenerateGrammar",
-        "title": "JSX Tagged: Regenerate Grammar"
+        "command": "tagged-jsx.regenerateGrammar",
+        "title": "Tagged JSX: Regenerate Grammar"
       },
       {
-        "command": "jsx-tagged.convertToJsx",
-        "title": "JSX Tagged: Convert to jsx tag"
+        "command": "tagged-jsx.convertToJsx",
+        "title": "Tagged JSX: Convert to jsx tag"
       },
       {
-        "command": "jsx-tagged.convertToSld",
-        "title": "JSX Tagged: Convert to sld tag"
+        "command": "tagged-jsx.convertToTagged",
+        "title": "Tagged JSX: Convert to tagged template"
       },
       {
-        "command": "jsx-tagged.toggle",
-        "title": "JSX Tagged: Toggle (Smart Convert)"
+        "command": "tagged-jsx.toggle",
+        "title": "Tagged JSX: Toggle (Smart Convert)"
       }
     ],
     "keybindings": [
       {
-        "command": "jsx-tagged.toggle",
+        "command": "tagged-jsx.toggle",
         "key": "ctrl+shift+j",
         "mac": "cmd+shift+j",
         "when": "editorTextFocus && (language == 'typescript' || language == 'typescriptreact' || language == 'javascript' || language == 'javascriptreact')"

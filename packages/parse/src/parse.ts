@@ -1,5 +1,6 @@
+import { ParseJSXError } from "./error";
 import {
-  AttributeToken,
+  StringToken,
   CLOSE_TAG_TOKEN,
   EQUALS_TOKEN,
   EqualsToken,
@@ -7,7 +8,6 @@ import {
   ExpressionToken,
   IDENTIFIER_TOKEN,
   OPEN_TAG_TOKEN,
-  QUOTE_CHAR_TOKEN,
   SLASH_TOKEN,
   SPREAD_TOKEN,
   SpreadToken,
@@ -18,35 +18,40 @@ import {
   SlashToken,
   IdentifierToken,
   TextToken,
-  QuoteToken,
+  STRING_TOKEN,
+  BaseToken,
+  COMMENT_END_TOKEN,
+  COMMENT_START_TOKEN,
+  CommentEndToken,
+  CommentStartToken,
 } from "./tokenize";
-import { isComponentNode } from "./util";
 
 // Node type constants
-export const ROOT_NODE = 0;
-export const ELEMENT_NODE = 1;
-export const TEXT_NODE = 2;
-export const EXPRESSION_NODE = 3;
-export const COMPONENT_NODE = 5;
+export const ROOT_NODE = "ROOT";
+export const ELEMENT_NODE = "ELEMENT";
+export const TEXT_NODE = "TEXT";
+export const EXPRESSION_NODE = "EXPRESSION";
+export const COMMENT_NODE = "COMMENT";
 
 // Prop type constants
-export const BOOLEAN_PROP = 0;
-export const STRING_PROP = 1;
-export const EXPRESSION_PROP = 2;
-export const SPREAD_PROP = 3;
+export const BOOLEAN_PROP = "BOOLEAN";
+export const STRING_PROP = "STRING";
+export const EXPRESSION_PROP = "EXPRESSION";
+export const SPREAD_PROP = "SPREAD";
 
 export type NodeType =
   | typeof ROOT_NODE
   | typeof ELEMENT_NODE
   | typeof TEXT_NODE
-  | typeof EXPRESSION_NODE;
+  | typeof EXPRESSION_NODE
+  | typeof COMMENT_NODE;
 export type PropType =
   | typeof BOOLEAN_PROP
   | typeof STRING_PROP
   | typeof EXPRESSION_PROP
   | typeof SPREAD_PROP;
 
-export type ChildNode = ElementNode | TextNode | ExpressionNode;
+export type ChildNode = ElementNode | TextNode | ExpressionNode | CommentNode;
 
 export interface RootNode {
   type: typeof ROOT_NODE;
@@ -54,7 +59,7 @@ export interface RootNode {
 }
 
 export interface ElementNode {
-  type: typeof ELEMENT_NODE | typeof COMPONENT_NODE;
+  type: typeof ELEMENT_NODE;
   name: string | number;
   props: PropNode[];
   children: ChildNode[];
@@ -63,7 +68,7 @@ export interface ElementNode {
       open: OpenTagToken;
       name: IdentifierToken;
       slash?: SlashToken;
-      close?: CloseTagToken;
+      close: CloseTagToken;
     };
     closeTag?: {
       open: OpenTagToken;
@@ -90,6 +95,15 @@ export interface ExpressionNode {
   };
 }
 
+export interface CommentNode {
+  type: typeof COMMENT_NODE;
+  children: (TextNode | ExpressionNode)[];
+  tokens: {
+    start: CommentStartToken;
+    end: CommentEndToken;
+  };
+}
+
 export interface BooleanProp {
   name: string;
   type: typeof BOOLEAN_PROP;
@@ -103,13 +117,10 @@ export interface StringProp {
   name: string;
   type: typeof STRING_PROP;
   value: string;
-  quote?: "'" | '"';
   tokens: {
     name: IdentifierToken;
     equals: EqualsToken;
-    openQuote?: QuoteToken;
-    valueTokens?: AttributeToken[];
-    closeQuote?: QuoteToken;
+    string: StringToken;
   };
 }
 
@@ -117,14 +128,11 @@ export interface ExpressionProp {
   name: string;
   type: typeof EXPRESSION_PROP;
   value: number;
-  quote?: "'" | '"';
-  tokens:{
-      name: IdentifierToken;
-      equals: EqualsToken;
-      expression: ExpressionToken;
-      openQuote?: QuoteToken;
-      closeQuote?: QuoteToken;
-  }
+  tokens: {
+    name: IdentifierToken;
+    equals: EqualsToken;
+    expression: ExpressionToken;
+  };
 }
 
 export interface SpreadProp {
@@ -136,16 +144,9 @@ export interface SpreadProp {
   };
 }
 
-export type PropNode =
-  | BooleanProp
-  | StringProp
-  | ExpressionProp
-  | SpreadProp;
+export type PropNode = BooleanProp | StringProp | ExpressionProp | SpreadProp;
 
-export const parse = (
-  tokens: Token[],
-  interpolationStrings?: string[],
-): RootNode => {
+export const parse = (tokens: Token[]): RootNode => {
   const root: RootNode = { type: ROOT_NODE, children: [] };
   const stack: (RootNode | ElementNode)[] = [root];
   let pos = 0;
@@ -159,16 +160,20 @@ export const parse = (
       case TEXT_TOKEN: {
         // --- TEXT ---
         const value = token.value;
-        if (value.trim() === "") {
-          const prevType = tokens[pos - 1]?.type;
-          const nextType = tokens[pos + 1]?.type;
-          // Filter out empty text nodes between tags
-          if (prevType === CLOSE_TAG_TOKEN || nextType === OPEN_TAG_TOKEN) {
-            pos++;
-            continue;
-          }
-        }
-        parent.children.push({ type: TEXT_NODE, value, tokens: { text: token } });
+        // if (value.trim() === "") {
+        //   const prevType = tokens[pos - 1]?.type;
+        //   const nextType = tokens[pos + 1]?.type;
+        //   // Filter out empty text nodes between tags
+        //   if (prevType === CLOSE_TAG_TOKEN || nextType === OPEN_TAG_TOKEN) {
+        //     pos++;
+        //     continue;
+        //   }
+        // }
+        parent.children.push({
+          type: TEXT_NODE,
+          value,
+          tokens: { text: token },
+        });
         pos++;
         continue;
       }
@@ -185,31 +190,34 @@ export const parse = (
       }
 
       case OPEN_TAG_TOKEN: {
-        // --- TAG ---
-        pos++; // Consume '<'
-        const nextToken = tokens[pos];
+        const nextToken = tokens[++pos];
 
         // Handle Closing Tag: </name>
         if (nextToken.type === SLASH_TOKEN) {
-          pos++; // Consume '/'
-          const nameToken = tokens[pos];
+          const nameToken = tokens[++pos];
+          const closeToken = tokens[++pos];
+          const currentParent = stack[stack.length - 1] as ElementNode;
           if (
             stack.length > 1 &&
-            nameToken?.type === IDENTIFIER_TOKEN &&
-            (stack[stack.length - 1] as ElementNode).name === nameToken.value
+            closeToken.type === CLOSE_TAG_TOKEN &&
+            ((nameToken?.type === IDENTIFIER_TOKEN &&
+              currentParent.name === nameToken.value) ||
+              ((nameToken?.type === EXPRESSION_TOKEN ||
+                nameToken.type === SLASH_TOKEN) &&
+                typeof currentParent.name === "number"))
           ) {
             stack.pop();
-            pos += 2; // Consume 'name' and '>'
+            pos++;
             continue;
           }
           throw new Error("Mismatched closing tag.");
         }
 
         // Handle Opening Tag: <name ...>
-        if (nextToken.type === IDENTIFIER_TOKEN) {
+        else if (nextToken.type === IDENTIFIER_TOKEN || nextToken.type === EXPRESSION_TOKEN) {
           const tagName = nextToken.value;
           const node = {
-            type: isComponentNode(tagName) ? COMPONENT_NODE : ELEMENT_NODE,
+            type: ELEMENT_NODE,
             name: tagName,
             props: [],
             children: [],
@@ -217,6 +225,7 @@ export const parse = (
               openTag: {
                 open: token,
                 name: nextToken,
+                close: undefined as CloseTagToken | undefined,
               },
             },
           } as ElementNode;
@@ -246,8 +255,10 @@ export const parse = (
                 });
                 pos += 2; // Consume '...' and expression
               } else {
-                throw new Error(
-                  "Spread operator must be followed by an expression.",
+                throw new ParseJSXError(
+                  `Spread operator must be followed by an expression. `,
+                  attrToken.segment,
+                  attrToken.start,
                 );
               }
             } else if (attrToken.type === IDENTIFIER_TOKEN) {
@@ -263,7 +274,6 @@ export const parse = (
                     name,
                     type: EXPRESSION_PROP,
                     value: valToken.value,
-                    quote: undefined,
                     tokens: {
                       name: attrToken,
                       equals: equalsToken,
@@ -271,72 +281,20 @@ export const parse = (
                     },
                   });
                   pos++;
-                } else if (valToken.type === QUOTE_CHAR_TOKEN) {
+                } else if (valToken.type === STRING_TOKEN) {
                   const quote = valToken.value;
                   const openQuote = valToken;
-                  pos++; // Consume opening quote
-                  const parts: (string | number)[] = [];
-                  const valueTokens: (AttributeToken | ExpressionToken)[] = [];
-                  while (pos < len && tokens[pos].type !== QUOTE_CHAR_TOKEN) {
-                    const part = tokens[pos++] as
-                      | ExpressionToken
-                      | AttributeToken;
-                    if (part.value !== "") parts.push(part.value);
-                    valueTokens.push(part);
-                  }
-                  const closeQuote = tokens[pos] as QuoteToken;
-                  pos++; // Consume closing quote
-
-                  if (parts.length === 0) {
-                    const prop = {
-                      name,
-                      type: STRING_PROP as any,
-                      value: "",
-                      quote,
-                      tokens: {
-                        name: attrToken,
-                        equals: equalsToken,
-                        openQuote,
-                        closeQuote,
-                      },
-                    };
-                    node.props.push(prop);
-                  } else if (parts.length === 1) {
-                    const v = parts[0];
-                    if (typeof v === "string") {
-                      const prop = {
-                        name,
-                        type: STRING_PROP as any,
-                        value: v,
-                        quote,
-                        tokens: {
-                          name: attrToken,
-                          equals: equalsToken,
-                          openQuote,
-                          valueTokens: valueTokens as AttributeToken[],
-                          closeQuote,
-                        },
-                      };
-                      node.props.push(prop);
-                    } else {
-                      const prop = {
-                        name,
-                        type: EXPRESSION_PROP as any,
-                        value: v,
-                        quote,
-                        tokens: {
-                          name: attrToken,
-                          equals: equalsToken,
-                          expression: valueTokens[0] as ExpressionToken,
-                        },
-                      };
-                      node.props.push(prop);
-                    }
-                  } else {
-                    throw new Error(
-                      "Mixed attribute values are not supported. Use either a static string or an expression.",
-                    );
-                  }
+                  node.props.push({
+                    name,
+                    type: STRING_PROP,
+                    value: quote, // Remove quotes
+                    tokens: {
+                      name: attrToken,
+                      equals: equalsToken,
+                      string: openQuote,
+                    },
+                  });
+                  pos++;
                 }
               } else {
                 // Boolean prop
@@ -351,7 +309,11 @@ export const parse = (
                 pos++;
               }
             } else {
-              throw new Error("Invalid attribute.");
+              throw new ParseJSXError(
+                `Invalid attribute: unexpected ${attrToken.type}.`,
+                (attrToken as BaseToken).segment,
+                (attrToken as BaseToken).start,
+              );
             }
           }
 
@@ -370,19 +332,61 @@ export const parse = (
           }
           continue;
         } else {
-          throw new Error(
-            `Expected identifier after opening tag, got: ${nextToken.type}`,
+          throw new ParseJSXError(
+            `Expected tag name after "<"`,
+            (token as BaseToken)?.segment,
+            (token as BaseToken)?.start,
           );
         }
       }
 
+      case COMMENT_START_TOKEN: {
+        const children = [] as (TextNode | ExpressionNode)[];
+        pos++; // Consume COMMENT_START_TOKEN
+        while (tokens[pos]?.type !== COMMENT_END_TOKEN && pos < len) {
+          const token = tokens[pos] as TextToken | ExpressionToken;
+          if (token.type === TEXT_TOKEN) {
+            children.push({
+              type: TEXT_NODE,
+              value: token.value,
+              tokens: { text: token },
+            });
+          } else if (token.type === EXPRESSION_TOKEN) {
+            children.push({
+              type: EXPRESSION_NODE,
+              value: token.value,
+              tokens: { expression: token },
+            });
+          }
+          pos++;
+        }
+        parent.children.push({
+          type: COMMENT_NODE,
+          children,
+          tokens: {
+            start: token,
+            end: tokens[pos] as CommentEndToken,
+          },
+        });
+        pos++; // Consume COMMENT_END_TOKEN
+        continue;
+      }
+
       default:
-        throw new Error(`Unexpected token: ${JSON.stringify(token)}`);
+        throw new ParseJSXError(
+          `Unexpected token: ${JSON.stringify(token)}`,
+          (token as BaseToken)?.segment,
+          (token as BaseToken)?.start,
+        );
     }
   }
 
   if (stack.length > 1) {
-    throw new Error("Unclosed tag found.");
+    const unclosedTags = stack
+      .slice(1)
+      .map((n) => (n as ElementNode).name)
+      .join(", ");
+    throw new ParseJSXError(`Unclosed tag found: <${unclosedTags}>`);
   }
 
   return root;

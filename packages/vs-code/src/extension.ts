@@ -124,8 +124,8 @@ function generateGrammar(tags: string[]): string {
 }
 
 async function regenerateGrammar(context: vscode.ExtensionContext): Promise<void> {
-  const config = vscode.workspace.getConfiguration("jsx-tagged");
-  const customTags = config.get<string[]>("customTags", ["jsx", "sld"]);
+  const config = vscode.workspace.getConfiguration("tagged-jsx");
+  const customTags = config.get<string[]>("customTags", ["jsx", "html"]);
 
   outputChannel.appendLine("Regenerating grammar for tags: " + JSON.stringify(customTags));
 
@@ -137,7 +137,7 @@ async function regenerateGrammar(context: vscode.ExtensionContext): Promise<void
 }
 
 export async function activate(context: vscode.ExtensionContext) {
-  outputChannel = vscode.window.createOutputChannel("JSX Tagged Templates");
+  outputChannel = vscode.window.createOutputChannel("Tagged JSX Templates");
   context.subscriptions.push(outputChannel);
 
   const grammarPath = context.extensionPath + "/syntaxes/" + GRAMMAR_FILENAME;
@@ -147,7 +147,7 @@ export async function activate(context: vscode.ExtensionContext) {
   }
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("jsx-tagged.regenerateGrammar", async () => {
+    vscode.commands.registerCommand("tagged-jsx.regenerateGrammar", async () => {
       await regenerateGrammar(context);
       await vscode.commands.executeCommand("workbench.action.reloadWindow");
     })
@@ -155,7 +155,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration(async (e) => {
-      if (e.affectsConfiguration("jsx-tagged.customTags")) {
+      if (e.affectsConfiguration("tagged-jsx.customTags")) {
         await regenerateGrammar(context);
         vscode.window.showInformationMessage(
           "Grammar regenerated. Reload window to apply changes.",
@@ -170,7 +170,7 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("jsx-tagged.convertToJsx", async (uri?: vscode.Uri) => {
+    vscode.commands.registerCommand("tagged-jsx.convertToJsx", async (uri?: vscode.Uri) => {
       const document = uri
         ? await vscode.workspace.openTextDocument(uri)
         : vscode.window.activeTextEditor?.document;
@@ -193,7 +193,7 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("jsx-tagged.convertToSld", async (uri?: vscode.Uri) => {
+    vscode.commands.registerCommand("tagged-jsx.convertToTagged", async (uri?: vscode.Uri) => {
       const { toTagged } = await import("transform-jsx");
       const document = uri
         ? await vscode.workspace.openTextDocument(uri)
@@ -217,7 +217,7 @@ export async function activate(context: vscode.ExtensionContext) {
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("jsx-tagged.toggle", async () => {
+    vscode.commands.registerCommand("tagged-jsx.toggle", async () => {
       const { toJsx, toTagged } = await import("transform-jsx");
       const editor = vscode.window.activeTextEditor;
       if (!editor) return;

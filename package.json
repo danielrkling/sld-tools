@@ -1,5 +1,5 @@
 {
-  "name": "sld-tools",
+  "name": "tagged-jsx",
   "version": "1.0.0",
   "private": true,
   "workspaces": [
@@ -7,15 +7,15 @@
   ],
   "scripts": {
     "build:ts-plugin": "npm run build --workspace=sld-ts-plugin",
-    "build:ts-plugin-jsx": "npm run build --workspace=ts-plugin-jsx",
-    "build:vs-code": "npm run build --workspace=sld-vs-code",
+    "build:ts-plugin-tagged-jsx": "npm run build --workspace=ts-plugin-tagged-jsx",
+    "build:vs-code": "npm run build --workspace=tagged-jsx",
     "watch:ts-plugin": "npm run watch --workspace=sld-ts-plugin",
-    "watch:vs-code": "npm run watch --workspace=sld-vs-code",
-    "build": "npm run build:ts-plugin && npm run build:ts-plugin-jsx && npm run build:vs-code",
-    "build:all-plugins": "npm run build --workspace=parse-jsx && npm run build --workspace=transform-jsx && npm run build:ts-plugin-jsx",
-    "sync:ts-plugin-jsx": "node scripts/sync-plugin.js",
-    "prebuild:vs-code": "npm run sync:ts-plugin-jsx",
-    "pretest:vs-code": "npm run sync:ts-plugin-jsx",
-    "test:vs-code": "npm run test --workspace=sld-vs-code"
+    "watch:vs-code": "npm run watch --workspace=tagged-jsx",
+    "build": "npm run build:ts-plugin && npm run build:ts-plugin-tagged-jsx && npm run build:vs-code",
+    "build:all-plugins": "npm run build --workspace=sld-parse && npm run build --workspace=transform-jsx && npm run build:ts-plugin-tagged-jsx",
+    "sync:ts-plugin-tagged-jsx": "node scripts/sync-plugin.js",
+    "prebuild:vs-code": "npm run sync:ts-plugin-tagged-jsx",
+    "pretest:vs-code": "npm run sync:ts-plugin-tagged-jsx",
+    "test:vs-code": "npm run test --workspace=tagged-jsx"
   }
 }
