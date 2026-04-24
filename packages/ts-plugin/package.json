@@ -37,9 +37,9 @@
     "vitest": "^1.1.0"
   },
   "dependencies": {
-    "parse-jsx": "file:../parse",
+    "parse-tagged-jsx": "file:../parse",
     "solid-js": "^1.9.12",
-    "transform": "file:../transform"
+    "transform-tagged-jsx": "file:../transform"
   },
   "directories": {
     "test": "tests"

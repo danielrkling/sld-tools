@@ -1,5 +1,5 @@
 import type * as tsModule from "typescript/lib/tsserverlibrary";
-import { createJsxTransformer, getTaggedPosition } from "transform-jsx";
+import { createJsxTransformer, getTaggedPosition } from "transform-tagged-jsx";
 
 function createSyntheticHost(
   originalProgram: tsModule.Program,

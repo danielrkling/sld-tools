@@ -1,5 +1,5 @@
 {
-  "name": "parse-jsx",
+  "name": "parse-tagged-jsx",
   "version": "1.0.0",
   "description": "A JSX parser for JavaScript tagged template literals",
   "type": "module",
