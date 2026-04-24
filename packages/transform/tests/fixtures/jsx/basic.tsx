@@ -2,7 +2,8 @@ const name = "World";
 const myClass = "active";
 const handler = () => {};
 const myRef = (el: any) => {};
-const Component = () => <div>Component</div>;
+const Component = (props: any) => <div>Component</div>;
+const props = { id: "test" };
 function jsx(strings: TemplateStringsArray, ...exprs: any[]) {}
 export const blank = <></>;
 export const single = <div>Hello</div>;
