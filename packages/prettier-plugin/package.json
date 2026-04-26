@@ -1,0 +1,47 @@
+{
+  "name": "prettier-plugin",
+  "version": "1.0.0",
+  "description": "A prettier plugin for formatting tagged template JSX",
+  "type": "module",
+  "main": "dist/index.mjs",
+  "types": "dist/index.d.mts",
+  "module": "dist/index.mjs",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.mjs",
+      "types": "./dist/index.d.mts"
+    }
+  },
+  "scripts": {
+    "build": "tsdown src/index.ts --format esm --minify",
+    "dev": "tsc --watch",
+    "test": "vitest run",
+    "test:coverage": "vitest --coverage",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "prettier",
+    "jsx",
+    "plugin",
+    "format",
+    "template-literal",
+    "tagged-template"
+  ],
+  "author": "",
+  "license": "MIT",
+  "peerDependencies": {
+    "prettier": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "@vitest/coverage-v8": "^1.1.0",
+    "prettier": "^3.0.0",
+    "tsdown": "^0.20.0-beta.3",
+    "typescript": "^5.3.3",
+    "vitest": "^1.1.0"
+  },
+  "dependencies": {
+    "prettier-plugin-embed": "^0.5.1"
+  }
+}
