@@ -1,13 +1,14 @@
 {
-    "dependencies": {
-        "@kobalte/core": "^0.13.11",
-        "parse-jsx": "file:../packages/parse-jsx",
-        "solid-html": "^1.8.2",
-        "solid-js": "^1.9.12",
-        "transform-jsx": "file:../packages/transform-jsx",
-        "ts-plugin-jsx": "file:../packages/ts-plugin-jsx"
-    },
-    "devDependencies": {
-        "typescript": "^6.0.2"
-    }
+  "dependencies": {
+    "@kobalte/core": "^0.13.11",
+    "oxfmt": "^0.46.0",
+    "parse-jsx": "file:../packages/parse-jsx",
+    "solid-html": "^1.8.2",
+    "solid-js": "^1.9.12",
+    "transform-jsx": "file:../packages/transform-jsx",
+    "ts-plugin-jsx": "file:../packages/ts-plugin-jsx"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.2"
+  }
 }

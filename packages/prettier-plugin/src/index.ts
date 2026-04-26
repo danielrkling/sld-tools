@@ -37,16 +37,29 @@ const printJsx = (
 
   const printChildren = (childrenToPrint: any[]): any[] => {
     const parts: any[] = [];
-    const childCount = childrenToPrint.length;
+    
+    // Filter out whitespace-only text nodes
+    const validChildren = childrenToPrint.filter(
+      (c) => c.type !== "TEXT" || c.value.trim() !== ""
+    );
+    const childCount = validChildren.length;
 
     for (let i = 0; i < childCount; i++) {
-      const child = childrenToPrint[i];
-      const nextChild = childrenToPrint[i + 1];
+      const child = validChildren[i];
+      const nextChild = validChildren[i + 1];
 
       if (child.type === "TEXT") {
-        if (child.value.trim()) {
-          parts.push(child.value);
-        }
+        // Replace multiple whitespace/newlines with a single space,
+        // but preserve trailing/leading space if it's adjacent to an expression.
+        const textVal = child.value.replace(/\s+/g, " ");
+        
+        // If it's the first child and starts with a space, trim it
+        let finalVal = textVal;
+        if (i === 0 && finalVal.startsWith(" ")) finalVal = finalVal.substring(1);
+        // If it's the last child and ends with a space, trim it
+        if (i === childCount - 1 && finalVal.endsWith(" ")) finalVal = finalVal.substring(0, finalVal.length - 1);
+        
+        parts.push(finalVal);
       } else if (child.type === "EXPRESSION") {
         const printed = printExpression(child.value as number);
         parts.push(["${", printed, "}"]);
@@ -56,7 +69,7 @@ const printJsx = (
         parts.push("<!--");
         for (const c of child.children) {
           if (c.type === "TEXT") {
-            parts.push(c.value);
+            parts.push(c.value.trim());
           } else if (c.type === "EXPRESSION") {
             const printed = printExpression(c.value as number);
             parts.push(["${", printed, "}"]);
@@ -211,12 +224,13 @@ const createPlugin = (tags: string[] = DEFAULT_TAGS): Plugin => {
                   return path.call(print, "quasi", "expressions", idx);
                 };
 
-                return [
+                return group([
                   print("tag"),
                   "`",
-                  printJsx(ast, printExpression, options as any),
+                  indent([softline, printJsx(ast, printExpression, options as any)]),
+                  softline,
                   "`",
-                ];
+                ]);
               };
             }
           }

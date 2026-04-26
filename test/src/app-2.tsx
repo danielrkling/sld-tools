@@ -1,6 +1,5 @@
 import { createSignal, onCleanup } from "solid-js";
 
-
 // A nested child component
 function TaskItem(props) {
   return jsx`<li class="task-item">

@@ -72,7 +72,7 @@ function generateGrammar(tags: string[]): string {
 
     patterns.push({
       contentName: "meta.embedded.block.jsx",
-      begin: "(?i)(\\w+\\([^)]*\\))\.(" + escapeRegex(tag) + ")(\x60)",
+      begin: "(?i)(\\w+\([^)]*\))\.(" + escapeRegex(tag) + ")(\x60)",
       beginCaptures: {
         "1": {
           name: "entity.name.function.js",
@@ -136,6 +136,63 @@ async function regenerateGrammar(context: vscode.ExtensionContext): Promise<void
   outputChannel.appendLine("Grammar written to: " + grammarPath);
 }
 
+async function formatDocument(
+  document: vscode.TextDocument,
+): Promise<vscode.TextEdit[]> {
+  const text = document.getText();
+  const filename = document.uri.fsPath;
+  let result = text;
+
+  try {
+    const prettierModule = await new Function('return import("prettier")')();
+    const prettier = prettierModule.default || prettierModule;
+    
+    const pluginModule = await new Function('return import("prettier-plugin")')();
+    const plugin = pluginModule.default || pluginModule;
+    
+    const embedPluginModule = await new Function('return import("prettier-plugin-embed")')();
+    const embedPlugin = embedPluginModule.default || embedPluginModule;
+
+    outputChannel.appendLine(`Formatting with Prettier... Plugin loaded with keys: ${Object.keys(plugin).join(", ")}`);
+
+    const isTypescript = filename.endsWith(".ts") || filename.endsWith(".tsx");
+    const parser = isTypescript ? "typescript" : "babel";
+
+    result = await prettier.format(text, {
+      filepath: filename,
+      parser,
+      plugins: [embedPlugin, plugin],
+      semi: true,
+      singleQuote: true,
+      trailingComma: "es5",
+    });
+  } catch (error) {
+    outputChannel.appendLine("Formatting error: " + String(error));
+    return [];
+  }
+
+  if (result === text) {
+    return [];
+  }
+
+  const fullRange = new vscode.Range(
+    new vscode.Position(0, 0),
+    new vscode.Position(document.lineCount, 0),
+  );
+
+  return [new vscode.TextEdit(fullRange, result)];
+}
+
+class TaggedJsxFormatter implements vscode.DocumentFormattingEditProvider {
+  async provideDocumentFormattingEdits(
+    document: vscode.TextDocument,
+    _options: vscode.FormattingOptions,
+    _token: vscode.CancellationToken,
+  ): Promise<vscode.TextEdit[]> {
+    return formatDocument(document);
+  }
+}
+
 export async function activate(context: vscode.ExtensionContext) {
   outputChannel = vscode.window.createOutputChannel("Tagged JSX Templates");
   context.subscriptions.push(outputChannel);
@@ -178,7 +235,7 @@ export async function activate(context: vscode.ExtensionContext) {
       if (!document) return;
 
       const text = document.getText();
-      const result = (await import("transform-jsx")).toJsxWithMappings(text).code;
+      const result = (await import("transform-tagged-jsx")).toJsxWithMappings(text).code;
 
       if (result !== text) {
         const edit = new vscode.TextEdit(
@@ -194,7 +251,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand("tagged-jsx.convertToTagged", async (uri?: vscode.Uri) => {
-      const { toTagged } = await import("transform-jsx");
+      const { toTagged } = await import("transform-tagged-jsx");
       const document = uri
         ? await vscode.workspace.openTextDocument(uri)
         : vscode.window.activeTextEditor?.document;
@@ -218,7 +275,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand("tagged-jsx.toggle", async () => {
-      const { toJsx, toTagged } = await import("transform-jsx");
+      const { toJsx, toTagged } = await import("transform-tagged-jsx");
       const editor = vscode.window.activeTextEditor;
       if (!editor) return;
 
@@ -253,6 +310,17 @@ export async function activate(context: vscode.ExtensionContext) {
         }
       }
     })
+  );
+
+  const formatter = new TaggedJsxFormatter();
+  context.subscriptions.push(
+    vscode.languages.registerDocumentFormattingEditProvider(
+      [
+        { scheme: "file" },
+        { scheme: "untitled" },
+      ],
+      formatter
+    )
   );
 }
 
