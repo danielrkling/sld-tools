@@ -1,11 +1,11 @@
-import { createSignal, onCleanup, For } from 'solid-js';
+import { createSignal, onCleanup, For } from "solid-js";
 
 // A nested child component
 function TaskItem(props) {
   return jsx`
     <li class="task-item">
       <span style=${{
-        'text-decoration': props.completed ? 'line-through' : 'none',
+        "text-decoration": props.completed ? "line-through" : "none",
       }}>${props.text}</span>
       <button onClick=${props.onDelete(props.id)}>Delete</button>
     </li>
@@ -29,7 +29,7 @@ export default function TodoApp() {
       </form>
       <ul>
         <${For} each=${tasks()} fallback=${jsx`<p>No tasks yet!</p>`}>${(
-          task
+          task,
         ) =>
           jsx`
             <${TaskItem}

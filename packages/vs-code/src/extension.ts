@@ -158,13 +158,14 @@ async function formatDocument(
     const isTypescript = filename.endsWith(".ts") || filename.endsWith(".tsx");
     const parser = isTypescript ? "typescript" : "babel";
 
+    // Resolve user's Prettier config
+    const userConfig = await prettier.resolveConfig(filename) || {};
+
     result = await prettier.format(text, {
+      ...userConfig,
       filepath: filename,
       parser,
-      plugins: [embedPlugin, plugin],
-      semi: true,
-      singleQuote: true,
-      trailingComma: "es5",
+      plugins: [embedPlugin, plugin, ...(userConfig.plugins || [])],
     });
   } catch (error) {
     outputChannel.appendLine("Formatting error: " + String(error));
