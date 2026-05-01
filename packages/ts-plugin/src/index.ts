@@ -1,5 +1,5 @@
 import type * as tsModule from "typescript/lib/tsserverlibrary";
-import { createJsxTransformer, getTaggedPosition } from "transform-tagged-jsx";
+import { createJsxTransformer, getTaggedPosition, createExpressionTransformCallbacks } from "transform-tagged-jsx";
 
 function createSyntheticHost(
   originalProgram: tsModule.Program,
@@ -84,8 +84,12 @@ function init(modules: { typescript: typeof tsModule }) {
     // Get tags from config, default to ['jsx']
     const tags: string[] = info.config?.tags ?? ["jsx"];
     
+    // Get useCallbacks from config, default to false
+    const useCallbacks: boolean = info.config?.useCallbacks ?? false;
+    
     // Create transformer with tags from config and ts instance
-    const { toJsxWithMappings } = createJsxTransformer(tags, ts);
+    const callbacks = useCallbacks ? createExpressionTransformCallbacks(ts) : undefined;
+    const { toJsxWithMappings } = createJsxTransformer(tags, ts, callbacks);
 
     const proxy: tsModule.LanguageService = Object.create(null);
     for (let k of Object.keys(info.languageService) as Array<keyof tsModule.LanguageService>) {

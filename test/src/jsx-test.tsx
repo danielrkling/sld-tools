@@ -1,18 +1,43 @@
-function jsx(strings: TemplateStringsArray, ...values: any[]) {
-  return strings.reduce((acc, str, i) => acc + str + (values[i] ?? ''), '');
-}
+import { createSignal, batch, For } from "solid-js";
+import { render } from "solid-js/web";
+import { createLocalStore, removeIndex } from "./utils";
 
-function Button<T>(props: { label: T; number: T; children?: any }) {
-  return jsx`<button>${props.label}</button>`;
-}
+type TodoItem = { title: string; done: boolean };
 
-const wrongPropJSX = jsx`<${Button} label=${'A'} db="123" />`;
+const App = () => {
+  const [newTitle, setTitle] = createSignal("");
+  const [todos, setTodos] = createLocalStore<TodoItem[]>("todo list", []);
 
-const nestedJSX = jsx`
-  <div>
-    <${A}>
-      <${Button} label=${'A'} number=${1} />
-      <${Button} label=${'B'} number=${2} />
-    </${A}>
-  </div>
-`;
+  const addTodo = (e: SubmitEvent) => {
+    e.preventDefault();
+    batch(() => {
+      setTodos(todos.length, {
+        title: newTitle(),
+        done: false,
+      });
+      setTitle("");
+    });
+  };
+
+  return (
+    jsx`<h3>Simple Todos Example</h3>
+      <form onSubmit=${addTodo}>
+        <input placeholder="enter todo and click +" required value=${() => newTitle()} onInput=${(e) => setTitle(e.currentTarget.value)} />
+        <button>+</button>
+      </form>
+      <${For} each=${todos}>
+        ${(todo, i) => (
+          jsx`<div>
+            <input type="checkbox" checked=${todo.done} onChange=${(e) => setTodos(i(), "done", e.currentTarget.checked)} />
+            <input type="text" value=${todo.title} onChange=${(e) => setTodos(i(), "title", e.currentTarget.value)} />
+            <button onClick=${() => setTodos((t) => removeIndex(t, i()))}>
+              x
+            </button>
+          </div>`
+        )}
+      </${For}>
+    `
+  );
+};
+
+render(App, document.getElementById("app")!);

@@ -236,7 +236,20 @@ export async function activate(context: vscode.ExtensionContext) {
       if (!document) return;
 
       const text = document.getText();
-      const result = (await import("transform-tagged-jsx")).toJsxWithMappings(text).code;
+      const config = vscode.workspace.getConfiguration("tagged-jsx");
+      const useCallbacks = config.get<boolean>("useCallbacks", false);
+      
+      const transformModule = await import("transform-tagged-jsx");
+      let result: string;
+      
+      if (useCallbacks) {
+        const ts = await import("typescript");
+        const callbacks = transformModule.createExpressionTransformCallbacks(ts);
+        const { toJsx: customToJsx } = transformModule.createJsxTransformer(["jsx"], ts, callbacks);
+        result = customToJsx(text);
+      } else {
+        result = transformModule.toJsxWithMappings(text).code;
+      }
 
       if (result !== text) {
         const edit = new vscode.TextEdit(
@@ -252,15 +265,26 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand("tagged-jsx.convertToTagged", async (uri?: vscode.Uri) => {
-      const { toTagged } = await import("transform-tagged-jsx");
       const document = uri
         ? await vscode.workspace.openTextDocument(uri)
         : vscode.window.activeTextEditor?.document;
 
       if (!document) return;
 
+      const config = vscode.workspace.getConfiguration("tagged-jsx");
+      const useCallbacks = config.get<boolean>("useCallbacks", false);
+      
+      const transformModule = await import("transform-tagged-jsx");
       const text = document.getText();
-      const result = toTagged(text);
+      let result: string;
+      
+      if (useCallbacks) {
+        const ts = await import("typescript");
+        const callbacks = transformModule.createExpressionTransformCallbacks(ts);
+        result = transformModule.toTagged(text, callbacks);
+      } else {
+        result = transformModule.toTagged(text);
+      }
 
       if (result !== text) {
         const edit = new vscode.TextEdit(
@@ -276,7 +300,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     vscode.commands.registerCommand("tagged-jsx.toggle", async () => {
-      const { toJsx, toTagged } = await import("transform-tagged-jsx");
       const editor = vscode.window.activeTextEditor;
       if (!editor) return;
 
@@ -287,28 +310,40 @@ export async function activate(context: vscode.ExtensionContext) {
       const templateRegex = new RegExp(tag + "\x60[\\s\\S]*?\x60", "g");
       const hasTemplates = templateRegex.test(text);
 
+      const config = vscode.workspace.getConfiguration("tagged-jsx");
+      const useCallbacks = config.get<boolean>("useCallbacks", false);
+      
+      const transformModule = await import("transform-tagged-jsx");
+      
+      let result: string;
+      
       if (hasTemplates) {
-        const result = toJsx(text);
-        if (result !== text) {
-          const edit = new vscode.TextEdit(
-            new vscode.Range(0, 0, document.lineCount, 0),
-            result
-          );
-          const workspaceEdit = new vscode.WorkspaceEdit();
-          workspaceEdit.set(document.uri, [edit]);
-          await vscode.workspace.applyEdit(workspaceEdit);
+        if (useCallbacks) {
+          const ts = await import("typescript");
+          const callbacks = transformModule.createExpressionTransformCallbacks(ts);
+          const { toJsx: customToJsx } = transformModule.createJsxTransformer(["jsx"], ts, callbacks);
+          result = customToJsx(text);
+        } else {
+          result = transformModule.toJsx(text);
         }
       } else {
-        const result = toTagged(text);
-        if (result !== text) {
-          const edit = new vscode.TextEdit(
-            new vscode.Range(0, 0, document.lineCount, 0),
-            result
-          );
-          const workspaceEdit = new vscode.WorkspaceEdit();
-          workspaceEdit.set(document.uri, [edit]);
-          await vscode.workspace.applyEdit(workspaceEdit);
+        if (useCallbacks) {
+          const ts = await import("typescript");
+          const callbacks = transformModule.createExpressionTransformCallbacks(ts);
+          result = transformModule.toTagged(text, callbacks);
+        } else {
+          result = transformModule.toTagged(text);
         }
+      }
+
+      if (result !== text) {
+        const edit = new vscode.TextEdit(
+          new vscode.Range(0, 0, document.lineCount, 0),
+          result
+        );
+        const workspaceEdit = new vscode.WorkspaceEdit();
+        workspaceEdit.set(document.uri, [edit]);
+        await vscode.workspace.applyEdit(workspaceEdit);
       }
     })
   );

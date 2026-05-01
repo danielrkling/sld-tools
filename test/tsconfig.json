@@ -16,7 +16,8 @@
     "plugins": [
       {
         "name": "ts-plugin-tagged-jsx",
-        "tags": ["jsx", "html", "svg"]
+        "tags": ["jsx", "html", "svg"],
+        "useCallbacks": true
       }
     ]
   },

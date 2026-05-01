@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toJsx, toTagged } from "../src/index";
+import { toJsx, toTagged, createJsxTransformer } from "../src/index";
 import { readFileSync } from "fs";
 import { join } from "path";
 
@@ -47,16 +47,14 @@ describe("transforms", () => {
   });
 });
 
-
 describe("one-way transforms", () => {
   it("child fragments", () => {
     const jsx = "<div><></></div>";
     const expected = "jsx`<div></div>`";
     const result = toTagged(jsx);
     expect(result.trim()).toBe(expected.trim());
-  }
-  );
-  
+  });
+
   it("self-closing tags", () => {
     const jsx = "<div><img /></div>";
     const expected = "jsx`<div><img /></div>`";
@@ -76,5 +74,48 @@ describe("one-way transforms", () => {
     const expected = "jsx`<div></div>`";
     const result = toTagged(jsx);
     expect(result.trim()).toBe(expected.trim());
+  });
+});
+
+describe("transform callbacks", () => {
+  it("should transform expressions with toTagged callback", () => {
+    const ts = require("typescript") as typeof import("typescript");
+
+    const jsx = "<div value={v()} />";
+    const result = toTagged(jsx, {
+      toTagged: ({ expression, sourceCode }) => {
+        const text = sourceCode.slice(expression.getStart(), expression.getEnd());
+        return `() => ${text}`;
+      }
+    });
+    expect(result).toContain("value=${() => v()}");
+  });
+
+  it("should transform expressions with toJSX callback", () => {
+    const ts = require("typescript") as typeof import("typescript");
+    const { toJsx: customToJsx } = createJsxTransformer(["jsx"], ts, {
+      toJSX: ({ expression, sourceCode }) => {
+        const text = sourceCode.slice(expression.getStart(), expression.getEnd());
+        return text.replace(/^\(\)\s*=>\s*/, "");
+      }
+    });
+
+    const tagged = "jsx`<div value=${() => v()} />`";
+    const result = customToJsx(tagged);
+    expect(result).toContain("value={v()}");
+  });
+
+  it("should provide propName in callbacks", () => {
+    const ts = require("typescript") as typeof import("typescript");
+    let capturedPropName = "";
+    toTagged("<div value={v()} />", {
+      toTagged: ({ expression, propName, sourceCode }) => {
+        capturedPropName = propName || "";
+        const text = sourceCode.slice(expression.getStart(), expression.getEnd());
+        return text;
+      }
+    });
+
+    expect(capturedPropName).toBe("value");
   });
 });

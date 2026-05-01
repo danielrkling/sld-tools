@@ -50,6 +50,11 @@
           },
           "default": ["jsx", "html"],
           "description": "Custom tag names for TextMate grammar (syntax highlighting). Changing this requires reloading the extension."
+        },
+        "tagged-jsx.useCallbacks": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable expression transform callbacks (wraps expressions with () => for tagged templates)"
         }
       }
     },

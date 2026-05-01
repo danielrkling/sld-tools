@@ -15,6 +15,7 @@ const DEFAULT_TAGS = ["jsx"];
 
 export interface PluginOptions extends Options {
   embeddedJsxTags?: string[];
+  useCallbacks?: boolean;
 }
 
 const {
@@ -186,7 +187,7 @@ const printJsx = (
   return printChildren(children);
 };
 
-const createPlugin = (tags: string[] = DEFAULT_TAGS): Plugin => {
+const createPlugin = (tags: string[] = DEFAULT_TAGS, useCallbacks: boolean = false): Plugin => {
   const embedEstree = (embedPlugin as any).printers?.estree || (embedPlugin as any).default?.printers?.estree;
   const plugin: Plugin = {
     parsers: {
@@ -211,27 +212,43 @@ const createPlugin = (tags: string[] = DEFAULT_TAGS): Plugin => {
                 : node.tag.property?.name;
 
             if (tagName && tags.includes(tagName)) {
-              return async (textToDoc, print, path) => {
-                const rawStrings = node.quasi.quasis.map((q: any) => q.value.raw);
-                const templateStrings = Object.assign(rawStrings, {
-                  raw: rawStrings,
-                });
+                return async (textToDoc, print, path) => {
+                 // If useCallbacks is enabled, transform the code first
+                 if (useCallbacks) {
+                   try {
+                     const transformModule = await import("transform-tagged-jsx");
+                     const tsModule = await import("typescript");
+                     const callbacks = transformModule.createExpressionTransformCallbacks(tsModule);
+                     const code = node.quasi.parent?.text || "";
+                     const transformed = transformModule.toTagged(code, callbacks);
+                     if (transformed !== code) {
+                       return transformed;
+                     }
+                   } catch (e) {
+                     // Fall through to normal formatting if transform fails
+                   }
+                 }
 
-                const tokens = tokenize(templateStrings as any);
-                const ast = parse(tokens);
+                 const rawStrings = node.quasi.quasis.map((q: any) => q.value.raw);
+                 const templateStrings = Object.assign(rawStrings, {
+                   raw: rawStrings,
+                 });
 
-                const printExpression = (idx: number) => {
-                  return path.call(print, "quasi", "expressions", idx);
-                };
+                 const tokens = tokenize(templateStrings as any);
+                 const ast = parse(tokens);
 
-                return group([
-                  print("tag"),
-                  "`",
-                  indent([softline, printJsx(ast, printExpression, options as any)]),
-                  softline,
-                  "`",
-                ]);
-              };
+                 const printExpression = (idx: number) => {
+                   return path.call(print, "quasi", "expressions", idx);
+                 };
+
+                 return group([
+                   print("tag"),
+                   "`",
+                   indent([softline, printJsx(ast, printExpression, options as any)]),
+                   softline,
+                   "`",
+                 ]);
+               };
             }
           }
           if (node.type === "TemplateLiteral" && path.parent?.type === "TaggedTemplateExpression") {
@@ -255,3 +272,8 @@ const plugin = createPlugin(DEFAULT_TAGS);
 
 export default plugin;
 export { createPlugin };
+
+// Export a factory function that creates a plugin with callbacks enabled
+export function createPluginWithCallbacks(tags?: string[]): Plugin {
+  return createPlugin(tags || DEFAULT_TAGS, true);
+}

@@ -1,7 +1,8 @@
 import * as ts from "typescript";
 import { computeMappings, getJsxPosition, getTaggedPosition, MappingResult } from "./mappings";
+import type { TransformerCallbacks, ToTaggedCallbackOptions } from "./types";
 
-export function toTagged(code: string): string {
+export function toTagged(code: string, callbacks?: TransformerCallbacks): string {
   let result = code;
   let iterations = 0;
   const maxIterations = 100;
@@ -25,11 +26,11 @@ export function toTagged(code: string): string {
 
     let inner = "";
     if (ts.isJsxElement(jsxElement)) {
-      inner = convertJsxElementToString(jsxElement, sourceFile);
+      inner = convertJsxElementToString(jsxElement, sourceFile, callbacks);
     } else if (ts.isJsxSelfClosingElement(jsxElement)) {
-      inner = convertJsxSelfClosingToString(jsxElement, sourceFile);
+      inner = convertJsxSelfClosingToString(jsxElement, sourceFile, callbacks);
     } else if (ts.isJsxFragment(jsxElement)) {
-      inner = convertJsxFragmentToString(jsxElement, sourceFile);
+      inner = convertJsxFragmentToString(jsxElement, sourceFile, callbacks);
     }
 
     const replacement = `jsx\`${inner}\``;
@@ -43,8 +44,8 @@ export function toTagged(code: string): string {
   return result;
 }
 
-export function toTaggedWithMappings(code: string): { code: string; mappings: MappingResult } {
-  const codeResult = toTagged(code);
+export function toTaggedWithMappings(code: string, callbacks?: TransformerCallbacks): { code: string; mappings: MappingResult } {
+  const codeResult = toTagged(code, callbacks);
   const mappings = computeMappings(code, codeResult);
   return { code: codeResult, mappings };
 }
@@ -67,6 +68,7 @@ function findFirstJSXElement(
 function convertAttributes(
   attributes: ts.JsxAttributes,
   sourceFile: ts.SourceFile,
+  callbacks?: TransformerCallbacks,
 ): string {
   let result = "";
 
@@ -78,8 +80,19 @@ function convertAttributes(
       if (value) {
         const text = sourceFile.text.slice(value.getStart(), value.getEnd());
         if (ts.isJsxExpression(value)) {
-          const exprText = text.slice(1, -1);
-          result += ` ${name}=\${${exprText}}`;
+          const expr = value.expression;
+          if (expr) {
+            let exprText = sourceFile.text.slice(expr.getStart(), expr.getEnd());
+            if (callbacks?.toTagged) {
+              exprText = callbacks.toTagged({
+                expression: expr,
+                propName: name,
+                propType: "attribute",
+                sourceCode: sourceFile.text,
+              });
+            }
+            result += ` ${name}=\${${exprText}}`;
+          }
         } else if (ts.isStringLiteral(value)) {
           result += ` ${name}="${value.text}"`;
         }
@@ -88,7 +101,14 @@ function convertAttributes(
       }
     } else if (ts.isJsxSpreadAttribute(attr)) {
       const expression = attr.expression;
-      const text = sourceFile.text.slice(expression.getStart(), expression.getEnd());
+      let text = sourceFile.text.slice(expression.getStart(), expression.getEnd());
+      if (callbacks?.toTagged) {
+        text = callbacks.toTagged({
+          expression: expression,
+          propType: "attribute",
+          sourceCode: sourceFile.text,
+        });
+      }
       result += " ...${" + text + "}";
     }
   }
@@ -99,19 +119,27 @@ function convertAttributes(
 function convertJsxChildToTagged(
   child: ts.JsxChild,
   sourceFile: ts.SourceFile,
+  callbacks?: TransformerCallbacks,
 ): string {
   if (ts.isJsxElement(child)) {
-    return convertJsxElementToString(child, sourceFile);
+    return convertJsxElementToString(child, sourceFile, callbacks);
   } else if (ts.isJsxSelfClosingElement(child)) {
-    return convertJsxSelfClosingToString(child, sourceFile);
+    return convertJsxSelfClosingToString(child, sourceFile, callbacks);
   } else if (ts.isJsxFragment(child)) {
-    return convertJsxFragmentToString(child, sourceFile);
+    return convertJsxFragmentToString(child, sourceFile, callbacks);
   } else if (ts.isJsxExpression(child)) {
     if (child.expression) {
-      const text = sourceFile.text.slice(
+      let text = sourceFile.text.slice(
         child.expression.getStart(),
         child.expression.getEnd(),
       );
+      if (callbacks?.toTagged) {
+        text = callbacks.toTagged({
+          expression: child.expression,
+          propType: "child",
+          sourceCode: sourceFile.text,
+        });
+      }
       return "${" + text + "}";
     }
     return "";
@@ -125,6 +153,7 @@ function convertJsxChildToTagged(
 function convertJsxElementChildren(
   node: ts.JsxElement,
   sourceFile: ts.SourceFile,
+  callbacks?: TransformerCallbacks,
 ): string {
   const children = node.children;
   if (children.length === 0) return "";
@@ -151,7 +180,7 @@ function convertJsxElementChildren(
       }
     }
 
-    result += convertJsxChildToTagged(child, sourceFile);
+    result += convertJsxChildToTagged(child, sourceFile, callbacks);
   }
 
   return result;
@@ -175,6 +204,7 @@ function isComponent(tagName: ts.JsxTagNameExpression): boolean {
 function convertJsxElementToString(
   node: ts.JsxElement,
   sourceFile: ts.SourceFile,
+  callbacks?: TransformerCallbacks,
 ): string {
   const tagName = getTagNameText(node.openingElement.tagName);
   const openTagName = isComponent(node.openingElement.tagName)
@@ -183,6 +213,7 @@ function convertJsxElementToString(
   const attributes = convertAttributes(
     node.openingElement.attributes,
     sourceFile,
+    callbacks,
   );
 
   const closeTagName = getTagNameText(node.closingElement.tagName);
@@ -190,7 +221,7 @@ function convertJsxElementToString(
     ? "${" + closeTagName + "}"
     : closeTagName;
 
-  const children = convertJsxElementChildren(node, sourceFile);
+  const children = convertJsxElementChildren(node, sourceFile, callbacks);
 
   return `<${openTagName}${attributes}>${children}</${closeTag}>`;
 }
@@ -198,12 +229,13 @@ function convertJsxElementToString(
 function convertJsxSelfClosingToString(
   node: ts.JsxSelfClosingElement,
   sourceFile: ts.SourceFile,
+  callbacks?: TransformerCallbacks,
 ): string {
   const tagName = getTagNameText(node.tagName);
   const tag = isComponent(node.tagName)
     ? "${" + tagName + "}"
     : tagName;
-  const attributes = convertAttributes(node.attributes, sourceFile);
+  const attributes = convertAttributes(node.attributes, sourceFile, callbacks);
 
   return `<${tag}${attributes} />`;
 }
@@ -211,6 +243,7 @@ function convertJsxSelfClosingToString(
 function convertJsxFragmentToString(
   node: ts.JsxFragment,
   sourceFile: ts.SourceFile,
+  callbacks?: TransformerCallbacks,
 ): string {
   const text = sourceFile.text;
   let children = "";
@@ -227,7 +260,7 @@ function convertJsxFragmentToString(
       }
     }
 
-    children += convertJsxChildToTagged(child, sourceFile);
+    children += convertJsxChildToTagged(child, sourceFile, callbacks);
   }
 
   return `${children}`;
