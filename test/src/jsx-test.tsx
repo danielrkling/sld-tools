@@ -18,6 +18,11 @@ const App = () => {
     });
   };
 
+  const removeIndex = <T,>(arr: T[], index: number) => [
+    ...arr.slice(0, index),
+    ...arr.slice(index + 1),
+  ];
+
   return (
     jsx`
       <h3>Simple Todos Example</h3>
@@ -34,10 +39,9 @@ const App = () => {
         ${(todo, i) => (
           jsx`<div>
             <input
-              type="checkbox"
-              checked=${"123"}
-              onChange=${(e) => setTodos(i(), "done", e.currentTarget.checked)}
-            />
+              type="checkbox" 
+              checked=${"Type Error"} //Comment
+              onChange=${(e) => setTodos(i(), "done", e.currentTarget.checked)} />
             <input
               type="text"
               value=${() => todo.title}

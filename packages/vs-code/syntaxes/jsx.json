@@ -2,10 +2,10 @@
   "scopeName": "text.jsx",
   "injectionSelector": "L:source.js, L:source.ts T:template-string.jsx",
   "patterns": [
+    { "include": "#comment" },
     { "include": "#empty-closing-tag" },
     { "include": "#dynamic-tag" },
-    { "include": "#tag" },
-    { "include": "#comment" }
+    { "include": "#tag" }
   ],
   "repository": {
     "empty-closing-tag": {
@@ -34,12 +34,16 @@
       "beginCaptures": {
         "1": { "name": "punctuation.definition.tag.jsx" }
       },
-      "end": "\\s*/?\\s*>",
-      "endCaptures": { "0": { "name": "punctuation.definition.tag.jsx" } },
-      "patterns": [{ "include": "#tag-stuff" }]
+      "end": "(\\s*/?\\s*>)",
+      "endCaptures": { "1": { "name": "punctuation.definition.tag.jsx" } },
+      "patterns": [
+        { "include": "#comment" },
+        { "include": "#tag-stuff" }
+      ]
     },
     "tag-stuff": {
       "patterns": [
+        { "include": "#comment" },
         { "include": "#inside-string" },
         { "include": "#string-substitution" },
         {
@@ -97,6 +101,13 @@
             "0": { "name": "punctuation.definition.comment.jsx" }
           },
           "contentName": "comment.block.jsx"
+        },
+        {
+          "name": "comment.line.double-slash.jsx",
+          "match": "(//.*)$",
+          "captures": {
+            "1": { "name": "punctuation.definition.comment.jsx" }
+          }
         }
       ]
     }
