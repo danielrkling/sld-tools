@@ -2,6 +2,22 @@ import * as ts from "typescript";
 import { computeMappings, getJsxPosition, getTaggedPosition, MappingResult } from "./mappings";
 import type { TransformerCallbacks, ToTaggedCallbackOptions } from "./types";
 
+function isPrimitiveExpression(node: ts.Expression): boolean {
+  return (
+    ts.isStringLiteral(node) ||
+    ts.isNumericLiteral(node) ||
+    node.kind === ts.SyntaxKind.TrueKeyword ||
+    node.kind === ts.SyntaxKind.FalseKeyword ||
+    node.kind === ts.SyntaxKind.NullKeyword ||
+    node.kind === ts.SyntaxKind.UndefinedKeyword
+  );
+}
+
+function shouldSkipProp(propName?: string): boolean {
+  if (!propName) return false;
+  return propName === "ref" || propName.startsWith("on");
+}
+
 export function toTagged(code: string, callbacks?: TransformerCallbacks): string {
   let result = code;
   let iterations = 0;
@@ -72,13 +88,39 @@ function convertAttributes(
 ): string {
   let result = "";
 
-  for (const attr of attributes.properties) {
+  for (let i = 0; i < attributes.properties.length; i++) {
+    const attr = attributes.properties[i];
+    const prevAttr = i > 0 ? attributes.properties[i - 1] : undefined;
+
+    // Get the whitespace between previous attribute and this one
+    let whitespace = " ";
+    if (prevAttr) {
+      const prevEnd = prevAttr.getEnd();
+      const currStart = attr.getStart();
+      if (currStart > prevEnd) {
+        whitespace = sourceFile.text.slice(prevEnd, currStart);
+      }
+    } else {
+      // Check whitespace between tag name and first attribute
+      const parent = attr.parent; // JsxAttributes
+      const openingElement = parent?.parent; // JsxOpeningElement | JsxSelfClosingElement
+      if (openingElement) {
+        const nameNode = (openingElement as any).tagName;
+        if (nameNode) {
+          const nameEnd = nameNode.getEnd();
+          const attrStart = attr.getStart();
+          if (attrStart > nameEnd) {
+            whitespace = sourceFile.text.slice(nameEnd, attrStart);
+          }
+        }
+      }
+    }
+
     if (ts.isJsxAttribute(attr)) {
       const name = (attr.name as any).text || "";
       const value = attr.initializer;
 
       if (value) {
-        const text = sourceFile.text.slice(value.getStart(), value.getEnd());
         if (ts.isJsxExpression(value)) {
           const expr = value.expression;
           if (expr) {
@@ -89,15 +131,15 @@ function convertAttributes(
                 propName: name,
                 propType: "attribute",
                 sourceCode: sourceFile.text,
-              });
+              } as ToTaggedCallbackOptions);
             }
-            result += ` ${name}=\${${exprText}}`;
+            result += `${whitespace}${name}=\${${exprText}}`;
           }
         } else if (ts.isStringLiteral(value)) {
-          result += ` ${name}="${value.text}"`;
+          result += `${whitespace}${name}="${value.text}"`;
         }
       } else {
-        result += ` ${name}`;
+        result += `${whitespace}${name}`;
       }
     } else if (ts.isJsxSpreadAttribute(attr)) {
       const expression = attr.expression;
@@ -107,9 +149,9 @@ function convertAttributes(
           expression: expression,
           propType: "attribute",
           sourceCode: sourceFile.text,
-        });
+        } as ToTaggedCallbackOptions);
       }
-      result += " ...${" + text + "}";
+      result += `${whitespace}...$\{${text}}`;
     }
   }
 
@@ -138,7 +180,7 @@ function convertJsxChildToTagged(
           expression: child.expression,
           propType: "child",
           sourceCode: sourceFile.text,
-        });
+        } as ToTaggedCallbackOptions);
       }
       return "${" + text + "}";
     }
@@ -237,7 +279,25 @@ function convertJsxSelfClosingToString(
     : tagName;
   const attributes = convertAttributes(node.attributes, sourceFile, callbacks);
 
-  return `<${tag}${attributes} />`;
+  // Preserve whitespace between last attribute and />
+  let whitespaceBeforeSlash = " ";
+  const attrs = node.attributes;
+  if (attrs.properties.length > 0) {
+    const lastAttr = attrs.properties[attrs.properties.length - 1];
+    const lastEnd = lastAttr.getEnd();
+    // Find the position of '/' in the source text starting from last attribute end
+    const nodeStart = node.getStart();
+    const nodeText = sourceFile.text.slice(nodeStart, node.getEnd());
+    const slashPos = nodeText.indexOf('/');
+    if (slashPos >= 0) {
+      const absoluteSlashPos = nodeStart + slashPos;
+      if (absoluteSlashPos > lastEnd) {
+        whitespaceBeforeSlash = sourceFile.text.slice(lastEnd, absoluteSlashPos);
+      }
+    }
+  }
+
+  return `<${tag}${attributes}${whitespaceBeforeSlash}/>`;
 }
 
 function convertJsxFragmentToString(
@@ -247,6 +307,16 @@ function convertJsxFragmentToString(
 ): string {
   const text = sourceFile.text;
   let children = "";
+
+  // Preserve whitespace between opening fragment and first child
+  if (node.children.length > 0) {
+    const openingEnd = node.openingFragment.getEnd();
+    const firstChild = node.children[0];
+    const firstStart = firstChild.getStart();
+    if (firstStart > openingEnd) {
+      children += text.slice(openingEnd, firstStart);
+    }
+  }
 
   for (let i = 0; i < node.children.length; i++) {
     const child = node.children[i];
@@ -263,7 +333,18 @@ function convertJsxFragmentToString(
     children += convertJsxChildToTagged(child, sourceFile, callbacks);
   }
 
+  // Preserve whitespace between last child and closing fragment
+  if (node.children.length > 0) {
+    const lastChild = node.children[node.children.length - 1];
+    const lastEnd = lastChild.getEnd();
+    const closingStart = node.closingFragment.getStart();
+    if (closingStart > lastEnd) {
+      children += text.slice(lastEnd, closingStart);
+    }
+  }
+
   return `${children}`;
 }
 
-export { getJsxPosition, getTaggedPosition };
+export { getJsxPosition, getTaggedPosition, computeMappings } from "./mappings";
+export type { MappingResult } from "./mappings";

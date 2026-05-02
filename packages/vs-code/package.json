@@ -144,7 +144,7 @@
         "command": "tagged-jsx.toggle",
         "key": "ctrl+shift+j",
         "mac": "cmd+shift+j",
-        "when": "editorTextFocus && (language == 'typescript' || language == 'typescriptreact' || language == 'javascript' || language == 'javascriptreact')"
+        "when": "editorTextFocus && (editorLangId == 'typescript' || editorLangId == 'typescriptreact' || editorLangId == 'javascript' || editorLangId == 'javascriptreact')"
       }
     ]
   },

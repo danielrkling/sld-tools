@@ -68,7 +68,7 @@ export function createExpressionTransformCallbacks(_ts: typeof ts): TransformerC
       }
 
       // Unwrap - remove the () => prefix
-      const text = sourceCode.slice(expression.getStart(), expression.getEnd());
+      const text = expression.getText();
       return text.replace(/^\(\)\s*=>\s*/, "");
     },
   };

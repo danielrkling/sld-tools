@@ -239,7 +239,7 @@ export async function activate(context: vscode.ExtensionContext) {
       const config = vscode.workspace.getConfiguration("tagged-jsx");
       const useCallbacks = config.get<boolean>("useCallbacks", false);
       
-      const transformModule = await import("transform-tagged-jsx");
+      const transformModule = await import("transform");
       let result: string;
       
       if (useCallbacks) {
@@ -274,7 +274,7 @@ export async function activate(context: vscode.ExtensionContext) {
       const config = vscode.workspace.getConfiguration("tagged-jsx");
       const useCallbacks = config.get<boolean>("useCallbacks", false);
       
-      const transformModule = await import("transform-tagged-jsx");
+      const transformModule = await import("transform");
       const text = document.getText();
       let result: string;
       
@@ -313,7 +313,7 @@ export async function activate(context: vscode.ExtensionContext) {
       const config = vscode.workspace.getConfiguration("tagged-jsx");
       const useCallbacks = config.get<boolean>("useCallbacks", false);
       
-      const transformModule = await import("transform-tagged-jsx");
+      const transformModule = await import("transform");
       
       let result: string;
       

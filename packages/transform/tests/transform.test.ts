@@ -28,6 +28,13 @@ describe("transforms", () => {
       const result = toJsx(input);
       expect(result).toBe(expected);
     });
+
+    it("todo file (no callbacks)", () => {
+      const input = readTagged("todo.ts");
+      const expected = readJsx("todo.tsx").replace(/\r\n/g, '\n');
+      const result = toJsx(input);
+      expect(result).toBe(expected);
+    });
   });
 
   describe("jsx to tagged", () => {
@@ -41,6 +48,13 @@ describe("transforms", () => {
     it("nested file", () => {
       const input = readJsx("nested.tsx");
       const expected = readTagged("nested.ts");
+      const result = toTagged(input);
+      expect(result).toBe(expected);
+    });
+
+    it("todo file (no callbacks)", () => {
+      const input = readJsx("todo.tsx").replace(/\r\n/g, '\n');
+      const expected = readTagged("todo.ts").replace(/\r\n/g, '\n');
       const result = toTagged(input);
       expect(result).toBe(expected);
     });

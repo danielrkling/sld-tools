@@ -1,4 +1,5 @@
 import { tokenize, parse, RootNode } from "parse-tagged-jsx";
+import { attachWhitespaceInfo, getPropWhitespaceBefore, getElementWhitespaceBeforeFirstProp, getElementWhitespaceAfterLastProp } from "./attachWhitespace";
 import { computeMappings } from "./mappings";
 import type { MappingResult } from "./mappings";
 import type * as tsModule from "typescript";
@@ -68,13 +69,13 @@ export function createJsxTransformer(
       try {
         const tokens = tokenize(strings as unknown as TemplateStringsArray);
         parsed = parse(tokens) as RootNode;
-      } catch(e) {
-        console.error('Error in tokenize/parse:', e.message);
+      } catch(e: unknown) {
+        console.error('Error in tokenize/parse:', (e as Error).message);
         console.error('strings:', strings);
         console.error('strings.raw:', (strings as any).raw);
         throw e;
       }
-      const jsxCode = printJsxFromAST(parsed, expressions, result);
+      const jsxCode = printJsxFromAST(parsed, expressions, strings, result);
 
       result =
         result.slice(0, template.getStart()) +
@@ -94,51 +95,44 @@ export function createJsxTransformer(
     function printJsxFromAST(
       parsed: RootNode,
       expressions: tsModule.Expression[],
+      strings: string[],
       sourceCode: string,
     ): string {
       try {
         if (!parsed.children || parsed.children.length === 0) {
-      return "<></>";
-    }
+        return "<></>";
+      }
+
+    // Attach whitespace info to AST nodes
+    attachWhitespaceInfo(parsed, strings, expressions);
 
     const children = parsed.children;
 
-    // Filter out whitespace-only text nodes at the beginning/end
-    const meaningfulChildren = children.filter((c, idx) => {
-      if (c.type === "TEXT" && c.value.trim() === "") {
-        // Keep whitespace text nodes only if they're not at the beginning or end
-        const isLeading = idx === 0;
-        const isTrailing = idx === children.length - 1;
-        return !isLeading && !isTrailing;
-      }
-      return true;
-    });
-
-    if (meaningfulChildren.length === 0) {
+    if (children.length === 0) {
       return "";
     }
 
-    if (meaningfulChildren.length === 1 && meaningfulChildren[0].type === "ELEMENT") {
-      return printJsxElement(meaningfulChildren[0], expressions, sourceCode);
+    if (children.length === 1 && children[0].type === "ELEMENT") {
+      return printJsxElement(children[0], expressions, strings, sourceCode);
     }
 
     // For multiple root elements, wrap in fragment
     let jsx = "";
-    for (const child of meaningfulChildren) {
+    for (const child of children) {
       if (child.type === "TEXT") {
         jsx += child.value;
       } else if (child.type === "ELEMENT") {
-        jsx += printJsxElement(child, expressions, sourceCode);
+        jsx += printJsxElement(child, expressions, strings, sourceCode);
       } else if (child.type === "EXPRESSION") {
         const expr = expressions[child.value as number];
         if (expr) {
-          jsx += `{${sourceCode.slice(expr.getStart(), expr.getEnd())}}`;
+          jsx += `{${expr.getText()}}`;
         }
       }
     }
     return `<>${jsx}</>`;
-      } catch(e) {
-        console.error('Error in printJsxFromAST:', e.message);
+      } catch(e: unknown) {
+        console.error('Error in printJsxFromAST:', (e as Error).message);
         throw e;
       }
     }
@@ -146,6 +140,7 @@ export function createJsxTransformer(
     function printJsxElement(
       element: any,
       expressions: tsModule.Expression[],
+      strings: string[],
       sourceCode: string,
     ): string {
       let name = element.name;
@@ -156,7 +151,7 @@ export function createJsxTransformer(
         console.error('expression not found at index', name, 'expressions length:', expressions.length);
         return '<!-- error: expression not found -->';
       }
-      name = sourceCode.slice(expr.getStart(), expr.getEnd());
+      name = expr.getText();
     }
 
       const children = element.children || [];
@@ -164,26 +159,37 @@ export function createJsxTransformer(
 
     const isSelfClosing = element.tokens?.openTag?.slash !== undefined;
 
+    // Build attrs with whitespace from attached info
     let attrs = "";
-    for (const prop of props) {
+
+    for (let i = 0; i < props.length; i++) {
+      const prop = props[i];
       const propName = prop.name;
       const propValue = prop.value;
       const propType = prop.type;
 
-      if (
-        propType === "BOOLEAN"
-      ) {
-        attrs += ` ${propName}`;
+      // Get whitespace before this prop (from attachWhitespaceInfo)
+      let whitespace = " ";
+      if (i === 0) {
+        // First prop: use whitespaceBeforeFirstProp from element
+        whitespace = getElementWhitespaceBeforeFirstProp(element) || " ";
+      } else {
+        // Other props: use whitespaceBefore from prop
+        whitespace = getPropWhitespaceBefore(prop) || " ";
+      }
+
+      if (propType === "BOOLEAN") {
+        attrs += `${whitespace}${propName}`;
       } else if (propType === "STRING") {
-        attrs += ` ${propName}="${propValue}"`;
+        attrs += `${whitespace}${propName}="${propValue}"`;
       } else if (propType === "EXPRESSION" && propValue !== undefined) {
         const expr = expressions[propValue as number];
         if (!expr) {
           console.error('Expression not found at index', propValue, 'expressions length:', expressions.length);
-          attrs += ` ${propName}={/* error: expression not found */}`;
-          break;
+          attrs += `${whitespace}${propName}={/* error: expression not found */}`;
+          continue;
         }
-        let exprText = sourceCode.slice(expr.getStart(), expr.getEnd());
+        let exprText = expr.getText();
         if (callbacks?.toJSX) {
           try {
             exprText = callbacks.toJSX({
@@ -195,21 +201,27 @@ export function createJsxTransformer(
             });
           } catch (e) {
             console.error('Error in toJSX callback:', e);
-            exprText = sourceCode.slice(expr.getStart(), expr.getEnd());
+            exprText = expr.getText();
           }
         }
-        attrs += ` ${propName}={${exprText}}`;
+        attrs += `${whitespace}${propName}={${exprText}}`;
       } else if (propType === "SPREAD" && propValue !== undefined) {
         const expr = expressions[propValue];
-        const exprText = sourceCode.slice(expr.getStart(), expr.getEnd());
-        attrs += ` {...${exprText}}`;
+        const exprText = expr.getText();
+        attrs += `${whitespace}{...${exprText}}`;
       }
+    }
+
+    // Preserve whitespace after last attribute (from attachWhitespaceInfo)
+    if (props.length > 0) {
+      const afterLast = getElementWhitespaceAfterLastProp(element) || "";
+      attrs += afterLast;
     }
 
     let childrenStr = "";
     for (const child of children) {
       if (child.type === "ELEMENT") {
-        childrenStr += printJsxElement(child, expressions, sourceCode);
+        childrenStr += printJsxElement(child, expressions, strings, sourceCode);
       } else if (child.type === "TEXT") {
         childrenStr += child.value;
       } else if (child.type === "EXPRESSION" && child.value !== undefined) {
@@ -217,9 +229,9 @@ export function createJsxTransformer(
         if (!expr) {
           console.error('Expression not found at index', child.value, 'expressions length:', expressions.length);
           childrenStr += `{/* error: expression not found */}`;
-          break;
+          continue;
         }
-        let exprText = sourceCode.slice(expr.getStart(), expr.getEnd());
+        let exprText = expr.getText();
         if (callbacks?.toJSX) {
           try {
             exprText = callbacks.toJSX({
@@ -230,7 +242,7 @@ export function createJsxTransformer(
             });
           } catch (e) {
             console.error('Error in toJSX callback:', e);
-            exprText = sourceCode.slice(expr.getStart(), expr.getEnd());
+            exprText = expr.getText();
           }
         }
         childrenStr += `{${exprText}}`;
@@ -239,7 +251,7 @@ export function createJsxTransformer(
 
     if (isSelfClosing) {
       if (attrs) {
-        return `<${name}${attrs} />`;
+        return `<${name}${attrs}/>`;
       } else {
         return `<${name} />`;
       }
