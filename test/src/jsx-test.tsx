@@ -1,13 +1,12 @@
 import { createSignal, batch, For } from "solid-js";
+import { createStore } from "solid-js/store";
 import { render } from "solid-js/web";
-import { createLocalStore, removeIndex } from "./utils";
 
 type TodoItem = { title: string; done: boolean };
 
 const App = () => {
   const [newTitle, setTitle] = createSignal("");
-  const [todos, setTodos] = createLocalStore<TodoItem[]>("todo list", []);
-
+  const [todos, setTodos] = createStore<TodoItem[]>([]);
   const addTodo = (e: SubmitEvent) => {
     e.preventDefault();
     batch(() => {
@@ -20,37 +19,37 @@ const App = () => {
   };
 
   return (
-    <>
+    jsx`
       <h3>Simple Todos Example</h3>
-      <form onSubmit={addTodo}>
+      <form onSubmit=${addTodo}>
         <input
           placeholder="enter todo and click +"
           required
-          value={newTitle()}
-          onInput={(e) => setTitle(e.currentTarget.value)}
+          value=${() => newTitle()}
+          onInput=${(e) => setTitle(e.currentTarget.value)}
         />
         <button>+</button>
       </form>
-      <For each={todos}>
-        {(todo, i) => (
-          <div>
+      <${For} each=${() => todos}>
+        ${(todo, i) => (
+          jsx`<div>
             <input
               type="checkbox"
-              checked={todo.done}
-              onChange={(e) => setTodos(i(), "done", e.currentTarget.checked)}
+              checked=${"123"}
+              onChange=${(e) => setTodos(i(), "done", e.currentTarget.checked)}
             />
             <input
               type="text"
-              value={todo.title}
-              onChange={(e) => setTodos(i(), "title", e.currentTarget.value)}
+              value=${() => todo.title}
+              onChange=${(e) => setTodos(i(), "title", e.currentTarget.value)}
             />
-            <button onClick={() => setTodos((t) => removeIndex(t, i()))}>
+            <button onClick=${() => setTodos((t) => removeIndex(t, i()))}>
               x
             </button>
-          </div>
+          </div>`
         )}
-      </For>
-    </>
+      </${For}>
+    `
   );
 };
 

@@ -186,14 +186,13 @@ describe("createExpressionTransformCallbacks", () => {
       expect(result).not.toContain("() => 42");
     });
 
-    it("should not wrap array literals with () =>", () => {
+    it("should wrap array literals with () =>", () => {
       const ts = require("typescript") as typeof import("typescript");
       const callbacks = createExpressionTransformCallbacks(ts);
 
       const jsx = "<For each={[1, 2, 3]}>test</For>";
       const result = toTagged(jsx, callbacks);
-      expect(result).toContain("each=${[1, 2, 3]}");
-      expect(result).not.toContain("() => [1, 2, 3]");
+      expect(result).toContain("each=${() => [1, 2, 3]}");
     });
 
     it("should not wrap existing arrow functions with () =>", () => {

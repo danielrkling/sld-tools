@@ -12,15 +12,6 @@ function isPrimitiveExpression(node: ts.Expression): boolean {
   );
 }
 
-function shouldWrapWithArrowFunction(node: ts.Expression): boolean {
-  // Only wrap simple function calls like v() or identifier()
-  // Don't wrap array literals, object literals, arrow functions, etc.
-  if (ts.isCallExpression(node)) {
-    return true;
-  }
-  return false;
-}
-
 function shouldSkipProp(propName?: string): boolean {
   if (!propName) return false;
   return propName === "ref" || propName.startsWith("on");
@@ -37,11 +28,12 @@ export function createExpressionTransformCallbacks(_ts: typeof ts): TransformerC
         return sourceCode.slice(expression.getStart(), expression.getEnd());
       }
 
-      // Only wrap with () => if it's a function call or identifier
-      if (!shouldWrapWithArrowFunction(expression)) {
+      // Don't wrap arrow functions (they already have their own parameters)
+      if (ts.isArrowFunction(expression)) {
         return sourceCode.slice(expression.getStart(), expression.getEnd());
       }
 
+      // Wrap all non-primitive, non-arrow-function expressions
       const text = sourceCode.slice(expression.getStart(), expression.getEnd());
       return `() => ${text}`;
     },
@@ -55,13 +47,12 @@ export function createExpressionTransformCallbacks(_ts: typeof ts): TransformerC
         return sourceCode.slice(expression.getStart(), expression.getEnd());
       }
 
-      // Only unwrap () => if it's a simple arrow function with no params
-      // AND the body looks like it was wrapped by us (simple expression)
-      if (!ts.isArrowFunction(expression) || expression.parameters.length >0) {
+      // Unwrap () => if it's an arrow function with no params
+      if (!ts.isArrowFunction(expression) || expression.parameters.length > 0) {
         return sourceCode.slice(expression.getStart(), expression.getEnd());
       }
 
-      // Don't unwrap if body is not a simple expression (e.g., block statement)
+      // Don't unwrap if body is a block statement
       const body = expression.body;
       if (ts.isBlock(body)) {
         return sourceCode.slice(expression.getStart(), expression.getEnd());
