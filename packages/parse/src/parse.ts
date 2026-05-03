@@ -49,7 +49,7 @@ export type PropType =
   | typeof BOOLEAN_PROP
   | typeof STRING_PROP
   | typeof EXPRESSION_PROP
-  | typeof SPREAD_PROP;
+  | typeof SPREAD_PROP
 
 export type ChildNode = ElementNode | TextNode | ExpressionNode | CommentNode;
 
@@ -63,6 +63,7 @@ export interface ElementNode {
   name: string | number;
   props: PropNode[];
   children: ChildNode[];
+  comments: CommentNode[];
   tokens: {
     openTag: {
       open: OpenTagToken;
@@ -214,13 +215,17 @@ export const parse = (tokens: Token[]): RootNode => {
         }
 
         // Handle Opening Tag: <name ...>
-        else if (nextToken.type === IDENTIFIER_TOKEN || nextToken.type === EXPRESSION_TOKEN) {
+        else if (
+          nextToken.type === IDENTIFIER_TOKEN ||
+          nextToken.type === EXPRESSION_TOKEN
+        ) {
           const tagName = nextToken.value;
           const node = {
             type: ELEMENT_NODE,
             name: tagName,
             props: [],
             children: [],
+            comments: [],
             tokens: {
               openTag: {
                 open: token,
@@ -308,6 +313,35 @@ export const parse = (tokens: Token[]): RootNode => {
                 });
                 pos++;
               }
+            } else if (attrToken.type === COMMENT_START_TOKEN) {
+              const children = [] as (TextNode | ExpressionNode)[];
+              pos++; // Consume COMMENT_START_TOKEN
+              while (tokens[pos]?.type !== COMMENT_END_TOKEN && pos < len) {
+                const token = tokens[pos] as TextToken | ExpressionToken;
+                if (token.type === TEXT_TOKEN) {
+                  children.push({
+                    type: TEXT_NODE,
+                    value: token.value,
+                    tokens: { text: token },
+                  });
+                } else if (token.type === EXPRESSION_TOKEN) {
+                  children.push({
+                    type: EXPRESSION_NODE,
+                    value: token.value,
+                    tokens: { expression: token },
+                  });
+                }
+                pos++;
+              }
+              node.comments.push({
+                type: COMMENT_NODE,
+                children,
+                tokens: {
+                  start: attrToken,
+                  end: tokens[pos] as CommentEndToken,
+                },
+              });
+              pos++; // Consume COMMENT_END_TOKEN
             } else {
               throw new ParseJSXError(
                 `Invalid attribute: unexpected ${attrToken.type}.`,

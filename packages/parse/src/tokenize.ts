@@ -82,10 +82,12 @@ export interface ExpressionToken {
 
 export interface CommentStartToken extends BaseToken {
   type: typeof COMMENT_START_TOKEN;
+  value: "<!--" | "//";
 }
 
 export interface CommentEndToken extends BaseToken {
   type: typeof COMMENT_END_TOKEN;
+  value: "-->" | "\n";
 }
 
 export type Token =
@@ -104,6 +106,7 @@ export type Token =
 const STATE_TEXT = 0;
 const STATE_TAG = 1;
 const STATE_COMMENT = 2;
+const STATE_LINE_COMMENT = 3;
 
 export const tokenize = (strings: TemplateStringsArray | string[]): Token[] => {
   const tokens: Token[] = [];
@@ -149,6 +152,7 @@ export const tokenize = (strings: TemplateStringsArray | string[]): Token[] => {
               cursor = nextTag + 4;
               tokens.push({
                 type: COMMENT_START_TOKEN,
+                value: "<!--",
                 segment: i,
                 start: nextTag,
                 end: nextTag + 4,
@@ -189,13 +193,28 @@ export const tokenize = (strings: TemplateStringsArray | string[]): Token[] => {
             });
             cursor++;
           } else if (code === 47) {
-            tokens.push({
-              type: SLASH_TOKEN,
-              segment: i,
-              start: cursor,
-              end: cursor + 1,
-            });
-            cursor++;
+            if (
+              str[cursor + 1] === "/" &&
+              tokens[tokens.length - 1].type !== OPEN_TAG_TOKEN
+            ) {
+              tokens.push({
+                type: COMMENT_START_TOKEN,
+                segment: i,
+                value: "//",
+                start: cursor,
+                end: cursor + 2,
+              });
+              state = STATE_LINE_COMMENT;
+              cursor += 2;
+            } else {
+              tokens.push({
+                type: SLASH_TOKEN,
+                segment: i,
+                start: cursor,
+                end: cursor + 1,
+              });
+              cursor++;
+            }
           } else if (code === 34 || code === 39) {
             const char = str[cursor] as "'" | '"';
             const endQuoteIndex = str.indexOf(char, cursor + 1);
@@ -245,11 +264,13 @@ export const tokenize = (strings: TemplateStringsArray | string[]): Token[] => {
           }
           break;
         }
-        case STATE_COMMENT: {
-          const endComment = str.indexOf("-->", cursor);
+        case STATE_COMMENT:
+        case STATE_LINE_COMMENT: {
+          const isLineComment = state === STATE_LINE_COMMENT;
+          const endTokenValue = isLineComment ? "\n" : "-->";
+          const endComment = str.indexOf(endTokenValue, cursor);
 
           if (endComment === -1) {
-            
             tokens.push({
               type: TEXT_TOKEN,
               value: str.slice(cursor),
@@ -259,23 +280,25 @@ export const tokenize = (strings: TemplateStringsArray | string[]): Token[] => {
             });
             cursor = len;
           } else {
-            state = STATE_TEXT;
+            state = isLineComment ? STATE_TAG : STATE_TEXT;
             const value = str.slice(cursor, endComment);
             if (value) {
               tokens.push({
                 type: TEXT_TOKEN,
-                value: str.slice(cursor, endComment),
+                value,
                 segment: i,
                 start: cursor,
                 end: endComment,
               });
             }
-            cursor = endComment + 3;
+
+            cursor = endComment + endTokenValue.length;
             tokens.push({
               type: COMMENT_END_TOKEN,
               segment: i,
+              value: endTokenValue,
               start: endComment,
-              end: endComment + 3,
+              end: endComment + endTokenValue.length,
             });
           }
           break;

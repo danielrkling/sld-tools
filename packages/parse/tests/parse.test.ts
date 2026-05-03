@@ -602,3 +602,20 @@ describe("parse - comments", () => {
     expect(result.children[1].type).toBe(ELEMENT_NODE);
   });
 });
+
+describe("line comments", () => {
+  it("should parse line comment in tag", () => {
+    const result = parseTemplate`<div // comment\n/>`;
+
+    expect(result.children).toHaveLength(1);
+    const div = result.children[0] as any;
+    expect(div.type).toBe(ELEMENT_NODE);
+
+    expect(div.comments).toHaveLength(1);
+    // Line comment should be a child of the element
+    const comment = div.comments[0] as any;
+    expect(comment.children[0].type).toBe(TEXT_NODE);
+    expect(comment.children[0].value).toBe(" comment");
+  });
+
+});

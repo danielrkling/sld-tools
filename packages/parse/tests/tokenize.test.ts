@@ -9,10 +9,11 @@ import {
   QUOTED_STRING_TOKEN,
   TEXT_TOKEN,
   EXPRESSION_TOKEN,
+  SPREAD_TOKEN,
   COMMENT_START_TOKEN,
   COMMENT_END_TOKEN,
   IdentifierToken,
-  SPREAD_TOKEN,
+  SpreadToken,
 } from "../src/index";
 
 function tokenizeTemplate(strings: TemplateStringsArray, ...values: any[]) {
@@ -185,8 +186,6 @@ describe("attribute values", () => {
       { type: CLOSE_TAG_TOKEN, segment: 0, start: 12, end: 13 },
     ]);
   });
-
-
 
   it("should handle URL-like attribute values", () => {
     const tokens = tokenizeTemplate`<a href="https://example.com/path?query=value&other=test#section">`;
@@ -666,9 +665,21 @@ describe("comments handling", () => {
       { type: OPEN_TAG_TOKEN, segment: 0, start: 0, end: 1 },
       { type: IDENTIFIER_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
       { type: CLOSE_TAG_TOKEN, segment: 0, start: 4, end: 5 },
-      { type: COMMENT_START_TOKEN, segment: 0, start: 5, end: 9 },
-      { type: TEXT_TOKEN, value: " This is a comment ", segment: 0, start: 9, end: 28 },
-      { type: COMMENT_END_TOKEN, segment: 0, start: 28, end: 31 },
+      {
+        type: COMMENT_START_TOKEN,
+        segment: 0,
+        start: 5,
+        end: 9,
+        value: "<!--",
+      },
+      {
+        type: TEXT_TOKEN,
+        value: " This is a comment ",
+        segment: 0,
+        start: 9,
+        end: 28,
+      },
+      { type: COMMENT_END_TOKEN, segment: 0, start: 28, end: 31, value: "-->" },
       { type: OPEN_TAG_TOKEN, segment: 0, start: 31, end: 32 },
       { type: SLASH_TOKEN, segment: 0, start: 32, end: 33 },
       { type: IDENTIFIER_TOKEN, value: "div", segment: 0, start: 33, end: 36 },
@@ -679,9 +690,21 @@ describe("comments handling", () => {
   it("should handle comments with special characters", () => {
     const tokens = tokenizeTemplate`<!-- Special chars: <>&'" -->`;
     expect(tokens).toEqual([
-      { type: COMMENT_START_TOKEN, segment: 0, start: 0, end: 4 },
-      { type: TEXT_TOKEN, value: " Special chars: <>&'\" ", segment: 0, start: 4, end: 26 },
-      { type: COMMENT_END_TOKEN, segment: 0, start: 26, end: 29 },
+      {
+        type: COMMENT_START_TOKEN,
+        segment: 0,
+        start: 0,
+        end: 4,
+        value: "<!--",
+      },
+      {
+        type: TEXT_TOKEN,
+        value: " Special chars: <>&'\" ",
+        segment: 0,
+        start: 4,
+        end: 26,
+      },
+      { type: COMMENT_END_TOKEN, segment: 0, start: 26, end: 29, value: "-->" },
     ]);
   });
 
@@ -689,11 +712,68 @@ describe("comments handling", () => {
     const value = "test";
     const tokens = tokenizeTemplate`<!-- Comment with ${value} inside -->`;
     expect(tokens).toEqual([
-      { type: COMMENT_START_TOKEN, segment: 0, start: 0, end: 4 },
-      { type: TEXT_TOKEN, value: " Comment with ", segment: 0, start: 4, end: 18 },
+      {
+        type: COMMENT_START_TOKEN,
+        segment: 0,
+        start: 0,
+        end: 4,
+        value: "<!--",
+      },
+      {
+        type: TEXT_TOKEN,
+        value: " Comment with ",
+        segment: 0,
+        start: 4,
+        end: 18,
+      },
       { type: EXPRESSION_TOKEN, value: 0 },
       { type: TEXT_TOKEN, value: " inside ", segment: 1, start: 0, end: 8 },
-      { type: COMMENT_END_TOKEN, segment: 1, start: 8, end: 11 },
+      { type: COMMENT_END_TOKEN, segment: 1, start: 8, end: 11, value: "-->" },
     ]);
+  });
+
+  it("should tokenize line comment in tag", () => {
+    const tokens = tokenizeTemplate`<div // comment\n>`;
+    expect(tokens).toEqual([
+      { type: "<", segment: 0, start: 0, end: 1 },
+      { type: IDENTIFIER_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
+      { type: COMMENT_START_TOKEN, value: "//", segment: 0, start: 5, end: 7 },
+      { type: TEXT_TOKEN, value: " comment", segment: 0, start: 7, end: 15 },
+      { type: COMMENT_END_TOKEN, value: "\n", segment: 0, start: 15, end: 16 },
+      { type: ">", segment: 0, start: 16, end: 17 },
+    ]);
+  });
+
+  it("should tokenize shorthand closing tag with line comment", () => {
+    const tokens = tokenizeTemplate`<${1} 
+    // comment
+    >${1}<//>`;
+    expect(tokens[2]).toEqual({
+      type: COMMENT_START_TOKEN,
+      value: "//",
+      segment: 1,
+      start: 6,
+      end: 8,
+    });
+    expect(tokens[3]).toEqual({
+      type: TEXT_TOKEN,
+      value: " comment",
+      segment: 1,
+      start: 8,
+      end: 16,
+    });
+    expect(tokens[4]).toEqual({
+      type: COMMENT_END_TOKEN,
+      value: "\n",
+      segment: 1,
+      start: 16,
+      end: 17,
+    });
+    expect(tokens[9]).toEqual({
+      type: SLASH_TOKEN,
+      segment: 2,
+      start: 2,
+      end: 3,
+    });
   });
 });
