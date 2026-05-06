@@ -8,7 +8,7 @@ import {
   parse,
   type RootNode,
   type ElementNode,
-} from "parse-tagged-jsx";
+} from "@tagged-jsx/parse";
 import ts from "typescript";
 
 const DEFAULT_TAGS = ["jsx"];

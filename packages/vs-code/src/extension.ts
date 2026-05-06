@@ -1,7 +1,20 @@
 import vscode from "vscode";
-import * as fs from "fs";
 
 let outputChannel: vscode.OutputChannel;
+
+// Conditional import for Node.js environment (desktop)
+const isWeb = typeof process === 'undefined' || process.env?.VSCODE_WEB_EXTENSION;
+async function readFile(path: string): Promise<string> {
+  if (isWeb) {
+    // Use VS Code's workspace file system API for web
+    const uint8Array = await vscode.workspace.fs.readFile(vscode.Uri.file(path));
+    return Buffer.from(uint8Array).toString('utf-8');
+  } else {
+    // Use Node.js fs for desktop
+    const fs = await import('fs');
+    return fs.readFileSync(path, 'utf-8');
+  }
+}
 
 const GRAMMAR_FILENAME = "lit-jsx-generated.json";
 
@@ -131,8 +144,16 @@ async function regenerateGrammar(context: vscode.ExtensionContext): Promise<void
 
   const grammarContent = generateGrammar(customTags);
   const grammarPath = context.extensionPath + "/syntaxes/" + GRAMMAR_FILENAME;
-
-  fs.writeFileSync(grammarPath, grammarContent, "utf-8");
+  
+  // Write file using appropriate API for environment
+  if (isWeb) {
+    // For web, we'd need to use workspace.fs, but grammar generation is desktop-only
+    outputChannel.appendLine("Grammar regeneration not supported in web version");
+    return;
+  } else {
+    const fs = await import('fs');
+    fs.writeFileSync(grammarPath, grammarContent, "utf-8");
+  }
   outputChannel.appendLine("Grammar written to: " + grammarPath);
 }
 
@@ -199,8 +220,22 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(outputChannel);
 
   const grammarPath = context.extensionPath + "/syntaxes/" + GRAMMAR_FILENAME;
-
-  if (!fs.existsSync(grammarPath)) {
+  
+  // Check if grammar exists using appropriate method for environment
+  let grammarExists = false;
+  if (isWeb) {
+    try {
+      await vscode.workspace.fs.readFile(vscode.Uri.file(grammarPath));
+      grammarExists = true;
+    } catch {
+      grammarExists = false;
+    }
+  } else {
+    const fs = await import('fs');
+    grammarExists = fs.existsSync(grammarPath);
+  }
+  
+  if (!grammarExists) {
     await regenerateGrammar(context);
   }
 
@@ -239,7 +274,7 @@ export async function activate(context: vscode.ExtensionContext) {
       const config = vscode.workspace.getConfiguration("tagged-jsx");
       const useCallbacks = config.get<boolean>("useCallbacks", false);
       
-      const transformModule = await import("transform");
+      const transformModule = await import("@tagged-jsx/transform");
       let result: string;
       
       if (useCallbacks) {
@@ -274,7 +309,7 @@ export async function activate(context: vscode.ExtensionContext) {
       const config = vscode.workspace.getConfiguration("tagged-jsx");
       const useCallbacks = config.get<boolean>("useCallbacks", false);
       
-      const transformModule = await import("transform");
+      const transformModule = await import("@tagged-jsx/transform");
       const text = document.getText();
       let result: string;
       
@@ -313,7 +348,7 @@ export async function activate(context: vscode.ExtensionContext) {
       const config = vscode.workspace.getConfiguration("tagged-jsx");
       const useCallbacks = config.get<boolean>("useCallbacks", false);
       
-      const transformModule = await import("transform");
+      const transformModule = await import("@tagged-jsx/transform");
       
       let result: string;
       

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tagged JSX Tools - Web Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-area { border: 1px solid #ccc; padding: 10px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Tagged JSX Tools - Web Extension Test</h1>
+    
+    <p>This page helps test the web version of your extension.</p>
+    
+    <h2>Test 1: JSX Tagged Template</h2>
+    <div class="test-area">
+        <pre id="jsx-test"><code>const element = jsx`&lt;div&gt;Hello World&lt;/div&gt;`;</code></pre>
+        <button onclick="testConvertToJsx()">Convert to JSX</button>
+        <button onclick="testConvertToTagged()">Convert to Tagged</button>
+    </div>
+    
+    <h2>Output:</h2>
+    <pre id="output"></pre>
+    
+    <script>
+        // Mock VS Code API for testing
+        window.vscode = {
+            window: {
+                createOutputChannel: (name) => ({
+                    appendLine: (msg) => console.log(`[${name}] ${msg}`)
+                })
+            },
+            commands: {
+                registerCommand: (cmd, callback) => {
+                    console.log(`Registered command: ${cmd}`);
+                    window[cmd] = callback;
+                }
+            },
+            workspace: {
+                getConfiguration: (section) => ({
+                    get: (key, defaultValue) => defaultValue
+                }),
+                onDidChangeConfiguration: (callback) => {}
+            },
+            languages: {
+                registerDocumentFormattingEditProvider: (selector, provider) => {}
+            }
+        };
+        
+        function testConvertToJsx() {
+            const text = document.getElementById('jsx-test').textContent;
+            if (window['tagged-jsx.convertToJsx']) {
+                window['tagged-jsx.convertToJsx']();
+                document.getElementById('output').textContent = 'Command executed (check console)';
+            }
+        }
+        
+        function testConvertToTagged() {
+            if (window['tagged-jsx.convertToTagged']) {
+                window['tagged-jsx.convertToTagged']();
+                document.getElementById('output').textContent = 'Command executed (check console)';
+            }
+        }
+        
+        // Load the extension
+        console.log('Loading Tagged JSX Tools web extension...');
+    </script>
+    
+    <script src="http://localhost:3000/extension.js"></script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import * as ts from "typescript";
-import { createJsxTransformer, getTaggedPosition } from "transform-tagged-jsx";
+import { createJsxTransformer, getTaggedPosition } from "@tagged-jsx/transform";
 
 describe("ts-plugin diagnostics", () => {
   describe("transformer creation", () => {

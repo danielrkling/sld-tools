@@ -1,5 +1,5 @@
 {
-  "name": "prettier-plugin",
+  "name": "@tagged-jsx/prettier-plugin",
   "version": "1.0.0",
   "description": "A prettier plugin for formatting tagged template JSX",
   "type": "module",
@@ -8,9 +8,9 @@
   "module": "dist/index.mjs",
   "exports": {
     ".": {
+      "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.mjs",
-      "types": "./dist/index.d.mts"
+      "require": "./dist/index.mjs"
     }
   },
   "scripts": {

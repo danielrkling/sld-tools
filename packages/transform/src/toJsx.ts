@@ -1,4 +1,4 @@
-import { tokenize, parse, RootNode } from "parse-tagged-jsx";
+import { tokenize, parse, RootNode } from "@tagged-jsx/parse";
 import { attachWhitespaceInfo, getPropWhitespaceBefore, getElementWhitespaceBeforeFirstProp, getElementWhitespaceAfterLastProp } from "./attachWhitespace";
 import { computeMappings } from "./mappings";
 import type { MappingResult } from "./mappings";
@@ -269,4 +269,5 @@ export function createJsxTransformer(
 import * as ts from "typescript";
 export const { toJsx, toJsxWithMappings } = createJsxTransformer(["jsx"], ts);
 
-export { computeMappings, MappingResult } from "./mappings";
+export { computeMappings } from "./mappings";
+export type { MappingResult } from "./mappings";

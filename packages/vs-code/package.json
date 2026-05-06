@@ -1,6 +1,6 @@
 {
-  "name": "tagged-jsx",
-  "displayName": "Tagged JSX Templates",
+  "name": "tagged-jsx-tools",
+  "displayName": "Tagged JSX Tools",
   "description": "Syntax highlighting and language support for JSX tagged template literals.",
   "publisher": "danielrkling",
   "repository": {
@@ -118,7 +118,7 @@
     ],
     "typescriptServerPlugins": [
       {
-        "name": "ts-plugin-tagged-jsx"
+        "name": "@tagged-jsx/ts-plugin"
       }
     ],
     "commands": [
@@ -154,24 +154,24 @@
     "@vscode/test-web": "^0.0.73",
     "@vscode/vsce": "^3.6.0",
     "esbuild": "^0.25.9",
-    "ts-plugin": "file:../ts-plugin",
-    "parse": "file:../parse",
-    "transform": "file:../transform",
-    "parse-jsx": "file:../parse",
+    "@tagged-jsx/ts-plugin": "file:../ts-plugin",
+    "@tagged-jsx/parse": "file:../parse",
+    "@tagged-jsx/transform": "file:../transform",
     "typescript": "^5.0.0",
     "vitest": "^2.0.0"
   },
-  "dependencies": {
-    "prettier": "^3.8.3",
-    "prettier-plugin": "file:../prettier-plugin",
-    "prettier-plugin-embed": "^0.5.1"
-  },
+  "bundledDependencies": [
+    "prettier",
+    "@tagged-jsx/prettier-plugin",
+    "prettier-plugin-embed"
+  ],
   "scripts": {
-    "build:web": "esbuild ./src/extension.ts --bundle --format=cjs --outfile=./dist/web/extension.js --external:vscode --external:@xml-tools/parser --external:prettier --external:prettier-plugin --external:prettier-plugin-embed --minify",
-    "build": "esbuild ./src/extension.ts --bundle --format=cjs --outfile=./dist/extension.js --external:vscode --external:typescript --external:@xml-tools/parser --external:prettier --external:prettier-plugin --external:prettier-plugin-embed --bundle --platform=node",
-    "watch": "esbuild ./src/extension.ts --bundle --format=cjs --outfile=./dist/extension.js --external:vscode --external:typescript --external:@xml-tools/parser --external:prettier --external:prettier-plugin --external:prettier-plugin-embed --watch",
+    "build:web": "esbuild ./src/extension.web.ts --bundle --format=cjs --outfile=./dist/web/extension.js --external:vscode --minify",
+    "build": "esbuild ./src/extension.ts --bundle --format=cjs --outfile=./dist/extension.js --external:vscode --bundle --platform=node",
+    "watch": "esbuild ./src/extension.ts --bundle --format=cjs --outfile=./dist/extension.js --external:vscode --watch",
     "prepublish": "npm run build",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:web": "npx vscode-test-web --extensionDevelopmentPath=. --browserType=chromium --headless"
   }
 }

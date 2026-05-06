@@ -1,0 +1,13 @@
+node_modules/**
+out/**
+src/**
+*.ts
+*.ts.map
+tsconfig.json
+.eslintrc.json
+.prettierrc.json
+**/.git/**
+**/.DS_Store
+**/*.test.ts
+**/tests/**
+.vscodeignore

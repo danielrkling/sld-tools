@@ -1,5 +1,5 @@
 {
-  "name": "parse-tagged-jsx",
+  "name": "@tagged-jsx/parse",
   "version": "1.0.0",
   "description": "A JSX parser for JavaScript tagged template literals",
   "type": "module",
@@ -8,9 +8,9 @@
   "module": "dist/index.mjs",
   "exports": {
     ".": {
+      "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.mjs",
-      "types": "./dist/index.d.mts"
+      "require": "./dist/index.mjs"
     }
   },
   "scripts": {

@@ -1,14 +1,14 @@
 {
-  "name": "transform-tagged-jsx",
+  "name": "@tagged-jsx/transform",
   "version": "1.0.0",
   "description": "Transform between tagged template literals and JSX syntax",
   "main": "dist/index.mjs",
   "types": "dist/index.d.mts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.mjs",
-      "types": "./dist/index.d.mts"
+      "require": "./dist/index.mjs"
     }
   },
   "scripts": {
@@ -37,7 +37,7 @@
   },
   "dependencies": {
     "diff": "^9.0.0",
-    "parse-tagged-jsx": "file:../parse",
+    "@tagged-jsx/parse": "file:../parse",
     "typescript": "^5.3.3"
   }
 }

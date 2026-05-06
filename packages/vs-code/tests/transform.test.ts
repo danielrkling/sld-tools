@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toJsx, toTagged } from "transform-jsx";
+import { toJsx, toTagged } from "@tagged-jsx/transform";
 import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath } from "url";
