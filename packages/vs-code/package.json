@@ -1,12 +1,12 @@
 {
-  "name": "tagged-jsx-tools",
+  "name": "tagged-jsx-vscode",
   "displayName": "Tagged JSX Tools",
   "description": "Syntax highlighting and language support for JSX tagged template literals.",
   "publisher": "danielrkling",
   "repository": {
     "url": "https://github.com/danielkrling/tagged-jsx"
   },
-  "version": "0.0.1",
+  "version": "0.0.2",
   "engines": {
     "vscode": ">=1.70.0"
   },
@@ -151,7 +151,7 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/vscode": "^1.70.0",
-    "@vscode/test-web": "^0.0.73",
+    "@vscode/test-web": "^0.0.80",
     "@vscode/vsce": "^3.6.0",
     "esbuild": "^0.25.9",
     "@tagged-jsx/ts-plugin": "file:../ts-plugin",
@@ -172,6 +172,6 @@
     "prepublish": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:web": "npx vscode-test-web --extensionDevelopmentPath=. --browserType=chromium --headless"
+    "test:web": "npx vscode-test-web --extensionDevelopmentPath=. --browserType=chromium"
   }
 }
