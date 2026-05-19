@@ -776,4 +776,16 @@ describe("comments handling", () => {
       end: 3,
     });
   });
+
+  it("should tokenize block comment in tag", () => {
+    const tokens = tokenizeTemplate`<div /* comment */>`;
+    expect(tokens).toEqual([
+      { type: "<", segment: 0, start: 0, end: 1 },
+      { type: IDENTIFIER_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
+      { type: COMMENT_START_TOKEN, value: "/*", segment: 0, start: 5, end: 7 },
+      { type: TEXT_TOKEN, value: " comment ", segment: 0, start: 7, end: 16 },
+      { type: COMMENT_END_TOKEN, value: "*/", segment: 0, start: 16, end: 18 },
+      { type: ">", segment: 0, start: 18, end: 19 },
+    ]);
+  });
 });

@@ -82,12 +82,12 @@ export interface ExpressionToken {
 
 export interface CommentStartToken extends BaseToken {
   type: typeof COMMENT_START_TOKEN;
-  value: "<!--" | "//";
+  value: "<!--" | "//" | "/*";
 }
 
 export interface CommentEndToken extends BaseToken {
   type: typeof COMMENT_END_TOKEN;
-  value: "-->" | "\n";
+  value: "-->" | "\n" | "*/";
 }
 
 export type Token =
@@ -105,8 +105,9 @@ export type Token =
 
 const STATE_TEXT = 0;
 const STATE_TAG = 1;
-const STATE_COMMENT = 2;
+const STATE_TAG_COMMENT = 2;
 const STATE_LINE_COMMENT = 3;
+const STATE_BLOCK_COMMENT = 4;
 
 export const tokenize = (strings: TemplateStringsArray | string[]): Token[] => {
   const tokens: Token[] = [];
@@ -148,7 +149,7 @@ export const tokenize = (strings: TemplateStringsArray | string[]): Token[] => {
               str[nextTag + 2] === "-" &&
               str[nextTag + 3] === "-"
             ) {
-              state = STATE_COMMENT;
+              state = STATE_TAG_COMMENT;
               cursor = nextTag + 4;
               tokens.push({
                 type: COMMENT_START_TOKEN,
@@ -205,6 +206,19 @@ export const tokenize = (strings: TemplateStringsArray | string[]): Token[] => {
                 end: cursor + 2,
               });
               state = STATE_LINE_COMMENT;
+              cursor += 2;
+            } else if (
+              str[cursor + 1] === "*" &&
+              tokens[tokens.length - 1].type !== OPEN_TAG_TOKEN
+            ) {
+              tokens.push({
+                type: COMMENT_START_TOKEN,
+                segment: i,
+                value: "/*",
+                start: cursor,
+                end: cursor + 2,
+              });
+              state = STATE_BLOCK_COMMENT;
               cursor += 2;
             } else {
               tokens.push({
@@ -264,10 +278,15 @@ export const tokenize = (strings: TemplateStringsArray | string[]): Token[] => {
           }
           break;
         }
-        case STATE_COMMENT:
-        case STATE_LINE_COMMENT: {
-          const isLineComment = state === STATE_LINE_COMMENT;
-          const endTokenValue = isLineComment ? "\n" : "-->";
+        case STATE_TAG_COMMENT:
+        case STATE_LINE_COMMENT:
+        case STATE_BLOCK_COMMENT: {
+          const isTagComment = state === STATE_TAG_COMMENT;
+          const endTokenValue = isTagComment
+            ? "-->"
+            : state === STATE_LINE_COMMENT
+              ? "\n"
+              : "*/";
           const endComment = str.indexOf(endTokenValue, cursor);
 
           if (endComment === -1) {
@@ -280,7 +299,7 @@ export const tokenize = (strings: TemplateStringsArray | string[]): Token[] => {
             });
             cursor = len;
           } else {
-            state = isLineComment ? STATE_TAG : STATE_TEXT;
+            state = isTagComment ? STATE_TEXT : STATE_TAG;
             const value = str.slice(cursor, endComment);
             if (value) {
               tokens.push({
