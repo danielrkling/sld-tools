@@ -11,6 +11,7 @@ import {
 } from "@tagged-jsx/parse";
 import ts from "typescript";
 
+
 const DEFAULT_TAGS = ["jsx"];
 
 export interface PluginOptions extends Options {
@@ -213,21 +214,6 @@ const createPlugin = (tags: string[] = DEFAULT_TAGS, useCallbacks: boolean = fal
 
             if (tagName && tags.includes(tagName)) {
                 return async (textToDoc, print, path) => {
-                 // If useCallbacks is enabled, transform the code first
-                 if (useCallbacks) {
-                   try {
-                     const transformModule = await import("transform-tagged-jsx");
-                     const tsModule = await import("typescript");
-                     const callbacks = transformModule.createExpressionTransformCallbacks(tsModule);
-                     const code = node.quasi.parent?.text || "";
-                     const transformed = transformModule.toTagged(code, callbacks);
-                     if (transformed !== code) {
-                       return transformed;
-                     }
-                   } catch (e) {
-                     // Fall through to normal formatting if transform fails
-                   }
-                 }
 
                  const rawStrings = node.quasi.quasis.map((q: any) => q.value.raw);
                  const templateStrings = Object.assign(rawStrings, {

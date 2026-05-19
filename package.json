@@ -28,5 +28,8 @@
     "vsce:package": "cd packages/vs-code && npx vsce package --no-dependencies",
     "vsce:publish": "cd packages/vs-code && npx vsce publish --no-dependencies",
     "package:vscode": "cd packages/vs-code && npx vsce package --no-dependencies"
+  },
+  "dependencies": {
+    "@xml-tools/parser": "^1.0.11"
   }
 }

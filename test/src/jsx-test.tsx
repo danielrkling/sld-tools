@@ -24,34 +24,36 @@ const App = () => {
   ];
 
   return (
-    <>
+    html`
       <h3>Simple Todos Example</h3>
-      <form onSubmit={addTodo}>
+      <form onSubmit=${addTodo}>
         <input
-          placeholder="enter todo and click +" required value={newTitle()}
-          onInput={(e) => setTitle(e.currentTarget.value)}
+          placeholder="enter todo and click +" required value=${() => newTitle()}
+          onInput=${(e) => setTitle(e.currentTarget.value)}
         />
         <button>+</button>
       </form>
-      <For each={todos}>
-        {(todo, i) => (
-          <div>
+      <${For} each=${() => todos}>
+        ${(todo, i) => (
+          html`<div>
             <input
-              type="checkbox" /* */
-              checked={"Type Error"} //Comment
-              onChange={(e) => setTodos(i(), "done", e.currentTarget.checked)} />
+              type="checkbox" /*  
+              comment 4
+              */
+              checked=${"Type Error"} //Comment
+              onChange=${(e) => setTodos(i(), "done", e.currentTarget.checked)} />
             <input
               type="text"
-              value={todo.title}
-              onChange={(e) => setTodos(i(), "title", e.currentTarget.value)}
+              value=${() => todo.title}
+              onChange=${(e) => setTodos(i(), "title", e.currentTarget.value)}
             />
-            <button onClick={() => setTodos((t) => removeIndex(t, i()))}>
+            <button onClick=${() => setTodos((t) => removeIndex(t, i()))}>
               x
             </button>
-          </div>
+          </div>`
         )}
-      </For>
-    </>
+      </${For}>
+    `
   );
 };
 

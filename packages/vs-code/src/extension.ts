@@ -1,4 +1,9 @@
+import { createExpressionTransformCallbacks, createJsxTransformer, createTaggedTransformer } from "@tagged-jsx/transform";
 import vscode from "vscode";
+import ts from "typescript";
+// import prettier from "prettier";
+// import prettierPlugin from "prettier-plugin";
+// import prettierEmbedPlugin from "prettier-plugin-embed";
 
 let outputChannel: vscode.OutputChannel;
 
@@ -205,15 +210,15 @@ async function formatDocument(
   return [new vscode.TextEdit(fullRange, result)];
 }
 
-class TaggedJsxFormatter implements vscode.DocumentFormattingEditProvider {
-  async provideDocumentFormattingEdits(
-    document: vscode.TextDocument,
-    _options: vscode.FormattingOptions,
-    _token: vscode.CancellationToken,
-  ): Promise<vscode.TextEdit[]> {
-    return formatDocument(document);
-  }
-}
+// class TaggedJsxFormatter implements vscode.DocumentFormattingEditProvider {
+//   async provideDocumentFormattingEdits(
+//     document: vscode.TextDocument,
+//     _options: vscode.FormattingOptions,
+//     _token: vscode.CancellationToken,
+//   ): Promise<vscode.TextEdit[]> {
+//     return formatDocument(document);
+//   }
+// }
 
 export async function activate(context: vscode.ExtensionContext) {
   outputChannel = vscode.window.createOutputChannel("Tagged JSX Templates");
@@ -237,6 +242,28 @@ export async function activate(context: vscode.ExtensionContext) {
   
   if (!grammarExists) {
     await regenerateGrammar(context);
+  }
+
+    function getTransformers() {
+    const config = vscode.workspace.getConfiguration("tagged-jsx");
+    const useCallbacks = config.get<boolean>("useCallbacks", false);
+    const tags = config.get<string[]>("customTags", ["jsx", "html"]);
+    const preferredTag = config.get<string>("preferredTag", "jsx");
+
+    const toJSXTransform = createJsxTransformer(
+      tags,
+      ts,
+      useCallbacks ? createExpressionTransformCallbacks(ts) : undefined,
+    );
+
+    const toTaggedTransform = createTaggedTransformer(
+      preferredTag,
+      ts,
+      useCallbacks ? createExpressionTransformCallbacks(ts) : undefined,
+    );
+
+
+    return { toJSXTransform, toTaggedTransform };
   }
 
   context.subscriptions.push(
@@ -271,20 +298,8 @@ export async function activate(context: vscode.ExtensionContext) {
       if (!document) return;
 
       const text = document.getText();
-      const config = vscode.workspace.getConfiguration("tagged-jsx");
-      const useCallbacks = config.get<boolean>("useCallbacks", false);
-      
-      const transformModule = await import("@tagged-jsx/transform");
-      let result: string;
-      
-      if (useCallbacks) {
-        const ts = await import("typescript");
-        const callbacks = transformModule.createExpressionTransformCallbacks(ts);
-        const { toJsx: customToJsx } = transformModule.createJsxTransformer(["jsx"], ts, callbacks);
-        result = customToJsx(text);
-      } else {
-        result = transformModule.toJsxWithMappings(text).code;
-      }
+      const { toJSXTransform } = getTransformers();
+      const result = toJSXTransform.toJsx(text);
 
       if (result !== text) {
         const edit = new vscode.TextEdit(
@@ -306,20 +321,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
       if (!document) return;
 
-      const config = vscode.workspace.getConfiguration("tagged-jsx");
-      const useCallbacks = config.get<boolean>("useCallbacks", false);
-      
-      const transformModule = await import("@tagged-jsx/transform");
       const text = document.getText();
-      let result: string;
-      
-      if (useCallbacks) {
-        const ts = await import("typescript");
-        const callbacks = transformModule.createExpressionTransformCallbacks(ts);
-        result = transformModule.toTagged(text, callbacks);
-      } else {
-        result = transformModule.toTagged(text);
-      }
+      const { toTaggedTransform } = getTransformers();
+      const result = toTaggedTransform.toTagged(text);
 
       if (result !== text) {
         const edit = new vscode.TextEdit(
@@ -340,35 +344,21 @@ export async function activate(context: vscode.ExtensionContext) {
 
       const document = editor.document;
       const text = document.getText();
-      const tag = "jsx";
+      const config = vscode.workspace.getConfiguration("tagged-jsx");
+      const tags = config.get<string[]>("customTags", ["jsx", "html"]);
 
-      const templateRegex = new RegExp(tag + "\x60[\\s\\S]*?\x60", "g");
+      const templateRegex = new RegExp(tags.map(tag => tag + "\x60[\\s\\S]*?\x60").join("|"), "g");
       const hasTemplates = templateRegex.test(text);
 
-      const config = vscode.workspace.getConfiguration("tagged-jsx");
-      const useCallbacks = config.get<boolean>("useCallbacks", false);
+        const { toJSXTransform, toTaggedTransform } = getTransformers();
       
-      const transformModule = await import("@tagged-jsx/transform");
-      
+
       let result: string;
       
       if (hasTemplates) {
-        if (useCallbacks) {
-          const ts = await import("typescript");
-          const callbacks = transformModule.createExpressionTransformCallbacks(ts);
-          const { toJsx: customToJsx } = transformModule.createJsxTransformer(["jsx"], ts, callbacks);
-          result = customToJsx(text);
-        } else {
-          result = transformModule.toJsx(text);
-        }
+        result = toJSXTransform.toJsx(text);
       } else {
-        if (useCallbacks) {
-          const ts = await import("typescript");
-          const callbacks = transformModule.createExpressionTransformCallbacks(ts);
-          result = transformModule.toTagged(text, callbacks);
-        } else {
-          result = transformModule.toTagged(text);
-        }
+        result = toTaggedTransform.toTagged(text);
       }
 
       if (result !== text) {
@@ -383,16 +373,16 @@ export async function activate(context: vscode.ExtensionContext) {
     })
   );
 
-  const formatter = new TaggedJsxFormatter();
-  context.subscriptions.push(
-    vscode.languages.registerDocumentFormattingEditProvider(
-      [
-        { scheme: "file" },
-        { scheme: "untitled" },
-      ],
-      formatter
-    )
-  );
+  // const formatter = new TaggedJsxFormatter();
+  // context.subscriptions.push(
+  //   vscode.languages.registerDocumentFormattingEditProvider(
+  //     [
+  //       { scheme: "file" },
+  //       { scheme: "untitled" },
+  //     ],
+  //     formatter
+  //   )
+  // );
 }
 
 export async function deactivate(): Promise<void> {}

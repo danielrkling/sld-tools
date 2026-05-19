@@ -3,7 +3,7 @@ import * as prettier from "prettier";
 import * as embedPlugin from "prettier-plugin-embed";
 import plugin from "../src/index";
 
-const plugins = [embedPlugin, plugin] as prettier.Plugin[];
+const plugins = [plugin] as prettier.Plugin[];
 
 describe("format - basic elements", () => {
   it("should format simple element", async () => {

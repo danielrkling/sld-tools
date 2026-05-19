@@ -6,7 +6,7 @@
   "repository": {
     "url": "https://github.com/danielkrling/tagged-jsx"
   },
-  "version": "0.0.2",
+  "version": "0.0.3",
   "engines": {
     "vscode": ">=1.70.0"
   },
@@ -33,15 +33,7 @@
           "type": "string",
           "default": "jsx",
           "enum": ["jsx", "html"],
-          "description": "Preferred tag name for JSX templates (jsx or html)"
-        },
-        "tagged-jsx.semanticTags": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "default": ["jsx", "html"],
-          "description": "Tag names to provide semantic highlighting for"
+          "description": "Tag to use when converting fromJSX to tagged template"
         },
         "tagged-jsx.customTags": {
           "type": "array",
@@ -49,7 +41,7 @@
             "type": "string"
           },
           "default": ["jsx", "html"],
-          "description": "Custom tag names for TextMate grammar (syntax highlighting). Changing this requires reloading the extension."
+          "description": "Tags to treat as JSX tagged templates when converting to JSX. As well as format and highlighting support."
         },
         "tagged-jsx.useCallbacks": {
           "type": "boolean",
@@ -112,7 +104,9 @@
         "id": "jsx Formatter",
         "languages": [
           "javascript",
-          "typescript"
+          "typescript",
+          "javascriptreact",
+          "typescriptreact"
         ]
       }
     ],
@@ -157,6 +151,7 @@
     "@tagged-jsx/ts-plugin": "file:../ts-plugin",
     "@tagged-jsx/parse": "file:../parse",
     "@tagged-jsx/transform": "file:../transform",
+    "@tagged-jsx/prettier-plugin": "file:../prettier-plugin",
     "typescript": "^5.0.0",
     "vitest": "^2.0.0"
   },
@@ -167,7 +162,7 @@
   ],
   "scripts": {
     "build:web": "esbuild ./src/extension.web.ts --bundle --format=cjs --outfile=./dist/web/extension.js --external:vscode --minify",
-    "build": "esbuild ./src/extension.ts --bundle --format=cjs --outfile=./dist/extension.js --external:vscode --bundle --platform=node",
+    "build": "esbuild ./src/extension.ts --bundle --format=cjs --outfile=./dist/extension.js --external:vscode --platform=node --minify",
     "watch": "esbuild ./src/extension.ts --bundle --format=cjs --outfile=./dist/extension.js --external:vscode --watch",
     "prepublish": "npm run build",
     "test": "vitest run",

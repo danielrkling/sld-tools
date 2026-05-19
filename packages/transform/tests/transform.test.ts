@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toJsx, toTagged, createJsxTransformer } from "../src/index";
+import { toJsx, toTagged, createJsxTransformer, createTaggedTransformer } from "../src/index";
 import { readFileSync } from "fs";
 import { join } from "path";
 
@@ -12,6 +12,9 @@ function readJsx(file: string): string {
 function readTagged(file: string): string {
   return readFileSync(join(fixturesDir, "tagged", file), "utf-8");
 }
+
+const taggedTransform = createTaggedTransformer("html", require("typescript") as typeof import("typescript"));
+const taggedJSXTransform = createJsxTransformer(["html"], require("typescript") as typeof import("typescript"));
 
 describe("transforms", () => {
   describe("tagged to jsx", () => {
@@ -87,6 +90,24 @@ describe("one-way transforms", () => {
     const jsx = "<div>{}</div>";
     const expected = "jsx`<div></div>`";
     const result = toTagged(jsx);
+    expect(result.trim()).toBe(expected.trim());
+  });
+});
+
+describe("different tags", () => {
+
+
+  it("custom tag", () => {
+    const jsx = "<div>Test</div>";
+    const expected = "html`<div>Test</div>`";
+    const result = taggedTransform.toTagged(jsx);
+    expect(result.trim()).toBe(expected.trim());
+  });
+
+  it("custom tag to jsx", () => {
+    const tagged = "html`<div>Test</div>`";
+    const expected = "<div>Test</div>";
+    const result = taggedJSXTransform.toJsx(tagged);
     expect(result.trim()).toBe(expected.trim());
   });
 });

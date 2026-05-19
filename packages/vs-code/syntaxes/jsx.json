@@ -102,6 +102,18 @@
           },
           "contentName": "comment.block.jsx"
         },
+                {
+          "name": "comment.block.jsx",
+          "begin": "/\\*",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.comment.jsx" }
+          },
+          "end": "\\*/",
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.comment.jsx" }
+          },
+          "contentName": "comment.block.jsx"
+        },
         {
           "name": "comment.line.double-slash.jsx",
           "match": "(//.*)$",
