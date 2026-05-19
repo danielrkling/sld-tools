@@ -15,7 +15,7 @@
   "patterns": [
     {
       "contentName": "meta.embedded.block.jsx",
-      "begin": "(?i)\\b(jsx)(`)",
+      "begin": "(?i)\\b(jsx|html)(`)",
       "beginCaptures": {
         "1": {
           "name": "entity.name.function.tagged-template.js"
@@ -41,91 +41,7 @@
     },
     {
       "contentName": "meta.embedded.block.jsx",
-      "begin": "(?i)\\b(\\w+).(jsx)(`)",
-      "beginCaptures": {
-        "1": {
-          "name": "variable.js"
-        },
-        "2": {
-          "name": "entity.name.function.tagged-template.js"
-        },
-        "3": {
-          "name": "punctuation.definition.string.template.begin.js"
-        }
-      },
-      "end": "`",
-      "endCaptures": {
-        "0": {
-          "name": "punctuation.definition.string.template.end.js"
-        }
-      },
-      "patterns": [
-        {
-          "include": "source.ts#template-substitution-element"
-        },
-        {
-          "include": "text.jsx"
-        }
-      ]
-    },
-    {
-      "contentName": "meta.embedded.block.jsx",
-      "begin": "(?i)(\\w+([^)]*)).(jsx)(`)",
-      "beginCaptures": {
-        "1": {
-          "name": "entity.name.function.js"
-        },
-        "2": {
-          "name": "entity.name.function.tagged-template.js"
-        },
-        "3": {
-          "name": "punctuation.definition.string.template.begin.js"
-        }
-      },
-      "end": "`",
-      "endCaptures": {
-        "0": {
-          "name": "punctuation.definition.string.template.end.js"
-        }
-      },
-      "patterns": [
-        {
-          "include": "source.ts#template-substitution-element"
-        },
-        {
-          "include": "text.jsx"
-        }
-      ]
-    },
-    {
-      "contentName": "meta.embedded.block.jsx",
-      "begin": "(?i)\\b(html)(`)",
-      "beginCaptures": {
-        "1": {
-          "name": "entity.name.function.tagged-template.js"
-        },
-        "2": {
-          "name": "punctuation.definition.string.template.begin.js"
-        }
-      },
-      "end": "`",
-      "endCaptures": {
-        "0": {
-          "name": "punctuation.definition.string.template.end.js"
-        }
-      },
-      "patterns": [
-        {
-          "include": "source.ts#template-substitution-element"
-        },
-        {
-          "include": "text.jsx"
-        }
-      ]
-    },
-    {
-      "contentName": "meta.embedded.block.jsx",
-      "begin": "(?i)\\b(\\w+).(html)(`)",
+      "begin": "(?i)\\b(\\w+).(jsx|html)(`)",
       "beginCaptures": {
         "1": {
           "name": "variable.js"
@@ -154,7 +70,7 @@
     },
     {
       "contentName": "meta.embedded.block.jsx",
-      "begin": "(?i)(\\w+([^)]*)).(html)(`)",
+      "begin": "(?i)(\\w+([^)]*)).(html|jsx)(`)",
       "beginCaptures": {
         "1": {
           "name": "entity.name.function.js"

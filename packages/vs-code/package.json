@@ -31,8 +31,8 @@
       "properties": {
         "tagged-jsx.preferredTag": {
           "type": "string",
-          "default": "jsx",
-          "enum": ["jsx", "html"],
+          "default": "html",
+          "enum": ["html", "jsx"],
           "description": "Tag to use when converting fromJSX to tagged template"
         },
         "tagged-jsx.customTags": {
@@ -40,12 +40,12 @@
           "items": {
             "type": "string"
           },
-          "default": ["jsx", "html"],
+          "default": ["html", "jsx"],
           "description": "Tags to treat as JSX tagged templates when converting to JSX. As well as format and highlighting support."
         },
         "tagged-jsx.useCallbacks": {
           "type": "boolean",
-          "default": false,
+          "default": true,
           "description": "Enable expression transform callbacks (wraps expressions with () => for tagged templates)"
         }
       }

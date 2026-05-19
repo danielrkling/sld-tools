@@ -14,7 +14,7 @@
   "patterns": [
     {
       "contentName": "meta.embedded.block.jsx",
-      "begin": "(?x)(?i)(\\b(?:[\\w\\.]+\\.)?(\\w+)(?:\\(.*\\))?\\.(jsx|html))(`)",
+      "begin": "(?x)(?i)(\\b(?:[\\w\\.]+\\.)?(\\w+)(?:\\(.*\\))?\\.(html|jsx))(`)",
       "beginCaptures": {
         "1": {
           "name": "entity.name.function.jsx"
@@ -46,7 +46,7 @@
     },
     {
       "contentName": "meta.embedded.block.jsx",
-      "begin": "(?i)(jsx|html)(`)",
+      "begin": "(?i)(html|jsx)(`)",
       "beginCaptures": {
         "1": {
           "name": "entity.name.function.jsx"
