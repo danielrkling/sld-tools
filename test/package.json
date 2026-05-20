@@ -4,9 +4,7 @@
     "oxfmt": "^0.46.0",
     "@tagged-jsx/parse": "file:../packages/parse",
     "solid-html": "^1.8.2",
-    "solid-js": "^1.9.12",
-    "@tagged-jsx/transform": "file:../packages/transform",
-    "@tagged-jsx/ts-plugin": "file:../packages/ts-plugin"
+    "solid-js": "^1.9.12"
   },
   "devDependencies": {
     "typescript": "^6.0.2"

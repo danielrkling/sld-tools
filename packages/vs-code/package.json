@@ -6,7 +6,7 @@
   "repository": {
     "url": "https://github.com/danielkrling/tagged-jsx"
   },
-  "version": "0.0.4",
+  "version": "0.0.5",
   "engines": {
     "vscode": ">=1.70.0"
   },
@@ -32,7 +32,10 @@
         "tagged-jsx.preferredTag": {
           "type": "string",
           "default": "html",
-          "enum": ["html", "jsx"],
+          "enum": [
+            "html",
+            "jsx"
+          ],
           "description": "Tag to use when converting fromJSX to tagged template"
         },
         "tagged-jsx.customTags": {
@@ -40,7 +43,10 @@
           "items": {
             "type": "string"
           },
-          "default": ["html", "jsx"],
+          "default": [
+            "html",
+            "jsx"
+          ],
           "description": "Tags to treat as JSX tagged templates when converting to JSX. As well as format and highlighting support."
         },
         "tagged-jsx.useCallbacks": {
@@ -164,9 +170,10 @@
     "build:web": "esbuild ./src/extension.web.ts --bundle --format=cjs --outfile=./dist/web/extension.js --external:vscode --minify",
     "build": "esbuild ./src/extension.ts --bundle --format=cjs --outfile=./dist/extension.js --external:vscode --platform=node --minify",
     "watch": "esbuild ./src/extension.ts --bundle --format=cjs --outfile=./dist/extension.js --external:vscode --watch",
-    "prepublish": "npm run build",
+    "prepublish": "cp ",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:web": "npx vscode-test-web --extensionDevelopmentPath=. --browserType=chromium"
+    "test:web": "npx vscode-test-web --extensionDevelopmentPath=. --browserType=chromium",
+    "sync-ts-plugin": "node sync-packages.mjs"
   }
 }

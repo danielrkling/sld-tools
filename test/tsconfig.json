@@ -15,7 +15,7 @@
     "resolveJsonModule": true,
     "plugins": [
       {
-        "name": "ts-plugin-tagged-jsx",
+        "name": "@tagged-jsx/ts-plugin",
         "tags": ["jsx", "html", "svg"],
         "useCallbacks": true
       }

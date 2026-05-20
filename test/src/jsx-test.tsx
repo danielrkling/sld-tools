@@ -1,6 +1,7 @@
 import { createSignal, batch, For } from "solid-js";
 import { createStore } from "solid-js/store";
 import { render } from "solid-js/web";
+import html from "solid-js/html";
 
 type TodoItem = { title: string; done: boolean };
 
@@ -37,9 +38,7 @@ const App = () => {
         {(todo, i) => (
           <div>
             <input
-              type="checkbox" /*  
-              comment 4
-              */
+              type="checkbox" /*comment*/
               checked={"Type Error"} //Comment
               onChange={(e) => setTodos(i(), "done", e.currentTarget.checked)} />
             <input
