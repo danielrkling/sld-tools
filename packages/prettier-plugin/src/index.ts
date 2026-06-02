@@ -115,7 +115,7 @@ const printJsx = (
       const parts: any[] = [];
       for (const child of c.children) {
         if (child.type === "TEXT") {
-          parts.push(child.value.trim());
+          parts.push(isLine ? child.value.trim() : child.value);
         } else if (child.type === "EXPRESSION") {
           parts.push(["${", printExpression(child.value as number), "}"]);
         }
@@ -123,7 +123,7 @@ const printJsx = (
       if (isLine) {
         return ["// ", ...parts];
       }
-      return ["/* ", ...parts, " */"];
+      return ["/*", ...parts, "*/"];
     });
 
     const positioned: any[] = [];
