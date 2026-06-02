@@ -110,75 +110,88 @@ const printJsx = (
       }
     }
 
-    const hasManyAttrs = attrDocs.length > 2;
-    const hasSpread = props.some((p: any) => p.type === "SPREAD");
-    const hasElement = elChildren.some((c: any) => c.type === "ELEMENT");
-
-    if (isSelfClosing) {
-      if (hasManyAttrs || hasSpread) {
-        return group(
-          [
-            "<",
-            tagNameDoc,
-            indent([docLine, docJoin(docLine, attrDocs)]),
-            docLine,
-            "/>",
-          ],
-          { shouldBreak: true },
-        );
+    const commentDocs = el.comments.map((c) => {
+      const isLine = c.tokens.start.value === "//";
+      const parts: any[] = [];
+      for (const child of c.children) {
+        if (child.type === "TEXT") {
+          parts.push(child.value.trim());
+        } else if (child.type === "EXPRESSION") {
+          parts.push(["${", printExpression(child.value as number), "}"]);
+        }
       }
-      return ["<", tagNameDoc, attrDocs.length ? [" ", docJoin(" ", attrDocs)] : [], " />"];
-    }
-
-    if (hasManyAttrs || hasSpread) {
-      return group(
-        [
-          "<",
-          tagNameDoc,
-          indent([docLine, docJoin(docLine, attrDocs)]),
-          docLine,
-          ">",
-          indent(hasElement ? [hardline, printChildren(elChildren)] : printChildren(elChildren)),
-          hasElement ? hardline : "",
-          "</",
-          tagNameDoc,
-          ">",
-        ],
-        { shouldBreak: true },
-      );
-    }
-
-    if (elChildren.length > 0) {
-      if (hasElement) {
-        return group(
-          [
-            "<",
-            tagNameDoc,
-            attrDocs.length ? [" ", docJoin(" ", attrDocs)] : [],
-            ">",
-            indent([hardline, printChildren(elChildren)]),
-            hardline,
-            "</",
-            tagNameDoc,
-            ">",
-          ],
-          { shouldBreak: true }
-        );
+      if (isLine) {
+        return ["// ", ...parts];
       }
+      return ["/* ", ...parts, " */"];
+    });
 
-      return [
+    const positioned: any[] = [];
+    for (let i = 0; i < props.length; i++) {
+      const prop = props[i];
+      const firstToken = (prop as any).type === "SPREAD" ? (prop as any).tokens.spread : (prop as any).tokens.name;
+      positioned.push({
+        pos: [firstToken.segment, firstToken.start],
+        type: "attr",
+        doc: attrDocs[i],
+      });
+    }
+    for (let i = 0; i < el.comments.length; i++) {
+      const c = el.comments[i];
+      positioned.push({
+        pos: [c.tokens.start.segment, c.tokens.start.start],
+        type: "comment",
+        isLine: c.tokens.start.value === "//",
+        followsNewline: !!c.followsNewline,
+        doc: commentDocs[i],
+      });
+    }
+    positioned.sort((a: any, b: any) => a.pos[0] - b.pos[0] || a.pos[1] - b.pos[1]);
+
+    // Line comments on same line as preceding attr stay there; on own line stay separate
+    const allAttrDocs: any[] = [];
+    for (let i = 0; i < positioned.length; i++) {
+      const item = positioned[i];
+      if (item.type === "comment" && item.isLine && !item.followsNewline && allAttrDocs.length > 0) {
+        allAttrDocs[allAttrDocs.length - 1] = [allAttrDocs[allAttrDocs.length - 1], " ", item.doc];
+      } else {
+        allAttrDocs.push(item.doc);
+      }
+    }
+    const validChildren = elChildren.filter(
+      (c: any) => c.type !== "TEXT" || c.value.trim() !== ""
+    );
+    const hasElementChild = validChildren.some((c: any) => c.type === "ELEMENT");
+    const hasNonWhitespaceText = validChildren.some((c: any) => c.type === "TEXT");
+    const expressionCount = validChildren.filter((c: any) => c.type === "EXPRESSION").length;
+    const childCount = validChildren.length;
+
+    const shouldBreakChildren = hasElementChild
+      || (expressionCount >= 2 && !hasNonWhitespaceText)
+      || childCount >= 3
+      || (attrDocs.length >= 2 && childCount > 0);
+
+    const hasComment = el.comments.length > 0;
+
+    const openTag = group(
+      [
         "<",
         tagNameDoc,
-        attrDocs.length ? [" ", docJoin(" ", attrDocs)] : [],
-        ">",
-        printChildren(elChildren),
-        "</",
-        tagNameDoc,
-        ">",
-      ];
-    }
+        allAttrDocs.length
+          ? [indent([docLine, docJoin(docLine, allAttrDocs)]), softline]
+          : [],
+        isSelfClosing ? [ifBreak("", " "), "/>"] : ">",
+      ],
+      hasComment ? { shouldBreak: true } : undefined,
+    );
 
-    return ["<", tagNameDoc, ">"];
+    if (isSelfClosing) return openTag;
+
+    const childrenDoc = shouldBreakChildren
+      ? [indent([hardline, printChildren(elChildren)]), hardline]
+      : printChildren(elChildren);
+
+    return [openTag, childrenDoc, "</", tagNameDoc, ">"];
   };
 
   if (children.length === 1 && children[0].type === "ELEMENT") {
@@ -221,7 +234,7 @@ const createPlugin = (tags: string[] = DEFAULT_TAGS, useCallbacks: boolean = fal
                  });
 
                  const tokens = tokenize(templateStrings as any);
-                 const ast = parse(tokens);
+                  const ast = parse(tokens, rawStrings);
 
                  const printExpression = (idx: number) => {
                    return path.call(print, "quasi", "expressions", idx);

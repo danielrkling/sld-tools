@@ -44,18 +44,18 @@ describe("format - basic elements", () => {
     expect(result).toContain("class=");
   });
 
-  it("should break self-closing tag with 3+ attributes to multiline", async () => {
+  it("should keep self-closing tag with 3+ attributes inline if fits print width", async () => {
     const code = 'jsx`<div style="color:red;"   class="foo" role="button" id="123" />`';
     const result = await prettier.format(code, {
       parser: "babel",
       plugins: plugins,
       printWidth: 80,
     });
-    expect(result).toContain("<div\n");
-    expect(result).toContain("  style=");
-    expect(result).toContain("  class=");
-    expect(result).toContain("  role=");
-    expect(result).toContain("  id=");
+    expect(result).toContain("style=");
+    expect(result).toContain("class=");
+    expect(result).toContain("role=");
+    expect(result).toContain("id=");
+    expect(result).toContain("<div ");
     expect(result).toContain("/>");
   });
 
@@ -178,6 +178,69 @@ describe("format - expressions", () => {
     });
     expect(result).toContain("  <section>");
     expect(result).toContain("    <h1>${title}</h1>");
-    expect(result).toContain("    <p>${description}</p>");
+    expect(result).toContain("<p>${description}</p>");
+  });
+});
+
+describe("format - comments in elements", () => {
+  it("should handle // line comment in tag", async () => {
+    const code = "jsx`<div // this is a comment\n     class=\"foo\">text</div>`";
+    const result = await prettier.format(code, {
+      parser: "babel",
+      plugins: plugins,
+    });
+    expect(result).toContain("// this is a comment");
+    expect(result).toContain("class=");
+  });
+
+  it("should handle /* */ block comment in tag", async () => {
+    const code = "jsx`<div /* block comment */\n     class=\"foo\">text</div>`";
+    const result = await prettier.format(code, {
+      parser: "babel",
+      plugins: plugins,
+    });
+    expect(result).toContain("/* block comment */");
+    expect(result).toContain("class=");
+  });
+
+  it("should handle // comment on self-closing tag", async () => {
+    const code = "jsx`<div // comment\n     class=\"foo\" />`";
+    const result = await prettier.format(code, {
+      parser: "babel",
+      plugins: plugins,
+    });
+    expect(result).toContain("// comment");
+    expect(result).toContain("/>");
+  });
+
+  it("should handle // comment with no attributes", async () => {
+    const code = "jsx`<div // just a comment\n>text</div>`";
+    const result = await prettier.format(code, {
+      parser: "babel",
+      plugins: plugins,
+    });
+    expect(result).toContain("// just a comment");
+  });
+
+  it("should interleave comments with attributes in source order", async () => {
+    const code = "jsx`<div /* block */\n     class=\"foo\"\n     // line\n     id=\"bar\"\n     style=\"color:red\">text</div>`";
+    const result = await prettier.format(code, {
+      parser: "babel",
+      plugins: plugins,
+    });
+    expect(result).toContain("/* block */");
+    expect(result).toContain("// line");
+    expect(result).toContain("class=");
+    expect(result).toContain("id=");
+    expect(result).toContain("style=");
+  });
+
+  it("should handle expression inside block comment", async () => {
+    const code = `jsx\`<div /* \${someVar} */>text</div>\``;
+    const result = await prettier.format(code, {
+      parser: "babel",
+      plugins: plugins,
+    });
+    expect(result).toContain("someVar");
   });
 });

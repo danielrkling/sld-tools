@@ -99,6 +99,7 @@ export interface ExpressionNode {
 export interface CommentNode {
   type: typeof COMMENT_NODE;
   children: (TextNode | ExpressionNode)[];
+  followsNewline?: boolean;
   tokens: {
     start: CommentStartToken;
     end: CommentEndToken;
@@ -147,11 +148,23 @@ export interface SpreadProp {
 
 export type PropNode = BooleanProp | StringProp | ExpressionProp | SpreadProp;
 
-export const parse = (tokens: Token[]): RootNode => {
+export const parse = (tokens: Token[], rawStrings?: string[]): RootNode => {
   const root: RootNode = { type: ROOT_NODE, children: [] };
   const stack: (RootNode | ElementNode)[] = [root];
   let pos = 0;
   const len = tokens.length;
+
+  const checkFollowsNewline = (token: CommentStartToken): boolean => {
+    if (!rawStrings) return false;
+    const raw = rawStrings[token.segment];
+    if (!raw) return false;
+    for (let i = token.start - 1; i >= 0; i--) {
+      const ch = raw[i];
+      if (ch === "\n") return true;
+      if (ch !== " " && ch !== "\t") return false;
+    }
+    return false;
+  };
 
   while (pos < len) {
     const token = tokens[pos];
@@ -336,6 +349,7 @@ export const parse = (tokens: Token[]): RootNode => {
               node.comments.push({
                 type: COMMENT_NODE,
                 children,
+                followsNewline: checkFollowsNewline(attrToken),
                 tokens: {
                   start: attrToken,
                   end: tokens[pos] as CommentEndToken,
