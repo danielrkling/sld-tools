@@ -18,9 +18,9 @@
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts --format esm --minify && tsdown src/web.ts --format esm --minify",
+    "build": "tsdown src/index.ts --format esm --minify && tsdown src/web.ts --format esm --minify --no-clean",
     "build:node": "tsdown src/index.ts --format esm --minify",
-    "build:web": "tsdown src/web.ts --format esm --minify",
+    "build:web": "tsdown src/web.ts --format esm --minify --no-clean",
     "dev": "tsc --watch",
     "test": "vitest run",
     "test:coverage": "vitest --coverage",
