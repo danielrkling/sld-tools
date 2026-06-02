@@ -11,10 +11,16 @@
       "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.mjs"
+    },
+    "./web": {
+      "types": "./dist/web.d.mts",
+      "import": "./dist/web.mjs"
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts --format esm --minify",
+    "build": "tsdown src/index.ts --format esm --minify && tsdown src/web.ts --format esm --minify",
+    "build:node": "tsdown src/index.ts --format esm --minify",
+    "build:web": "tsdown src/web.ts --format esm --minify",
     "dev": "tsc --watch",
     "test": "vitest run",
     "test:coverage": "vitest --coverage",

@@ -5,13 +5,85 @@ import {
   createTaggedTransformer,
 } from "@tagged-jsx/transform";
 import ts from "typescript";
-// import * as prettier from "prettier/standalone";
-// import {
-//   createPlugin,
-//   createPluginWithCallbacks,
-// } from "@tagged-jsx/prettier-plugin";
+import prettier from "prettier/standalone";
+import { createPlugin } from "@tagged-jsx/prettier-plugin/web";
+import parserTypescript from "prettier/plugins/typescript";
+import parserBabel from "prettier/plugins/babel";
 
 let outputChannel: vscode.OutputChannel;
+
+function getPrettierOptions(document: vscode.TextDocument): Record<string, unknown> {
+  const prettierConfig = vscode.workspace.getConfiguration("prettier", document.uri);
+  const editorConfig = vscode.workspace.getConfiguration("editor", document.uri);
+
+  const options: Record<string, unknown> = {};
+
+  const settingMap: Record<string, string> = {
+    printWidth: "printWidth",
+    tabWidth: "tabWidth",
+    useTabs: "useTabs",
+    singleQuote: "singleQuote",
+    trailingComma: "trailingComma",
+    bracketSpacing: "bracketSpacing",
+    bracketSameLine: "bracketSameLine",
+    arrowParens: "arrowParens",
+    endOfLine: "endOfLine",
+    embeddedLanguageFormatting: "embeddedLanguageFormatting",
+    htmlWhitespaceSensitivity: "htmlWhitespaceSensitivity",
+    proseWrap: "proseWrap",
+    semi: "semi",
+    quoteProps: "quoteProps",
+    jsxSingleQuote: "jsxSingleQuote",
+    singleAttributePerLine: "singleAttributePerLine",
+  };
+
+  for (const [setting, option] of Object.entries(settingMap)) {
+    const value = prettierConfig.get<unknown>(setting);
+    if (value !== undefined) {
+      options[option] = value;
+    }
+  }
+
+  if (options.tabWidth === undefined) {
+    options.tabWidth = editorConfig.get<number>("tabSize", 2);
+  }
+  if (options.useTabs === undefined) {
+    options.useTabs = !editorConfig.get<boolean>("insertSpaces", true);
+  }
+
+  return options;
+}
+
+async function resolvePrettierConfigFromFile(document: vscode.TextDocument): Promise<Record<string, unknown>> {
+  const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+  if (!workspaceFolder) return {};
+
+  const rootUri = workspaceFolder.uri;
+
+  const jsonFiles = [".prettierrc", ".prettierrc.json"];
+  for (const file of jsonFiles) {
+    try {
+      const fileUri = vscode.Uri.joinPath(rootUri, file);
+      const content = await vscode.workspace.fs.readFile(fileUri);
+      const text = new TextDecoder().decode(content);
+      return JSON.parse(text);
+    } catch {
+      continue;
+    }
+  }
+
+  try {
+    const pkgUri = vscode.Uri.joinPath(rootUri, "package.json");
+    const content = await vscode.workspace.fs.readFile(pkgUri);
+    const text = new TextDecoder().decode(content);
+    const pkg = JSON.parse(text);
+    if (pkg.prettier) return pkg.prettier;
+  } catch {
+    // no package.json
+  }
+
+  return {};
+}
 
 export async function activate(context: vscode.ExtensionContext) {
   outputChannel = vscode.window.createOutputChannel("Tagged JSX Tools (Web)");
@@ -163,27 +235,52 @@ export async function activate(context: vscode.ExtensionContext) {
     }),
   );
 
-  //Formatter registration - simplified for web
-  // context.subscriptions.push(
-  //   vscode.languages.registerDocumentFormattingEditProvider("typescript", {
-  //     async provideDocumentFormattingEdits(document: vscode.TextDocument) {
-  //       const text = document.getText();
-  //       const config = vscode.workspace.getConfiguration("tagged-jsx");
-  //       const tags = config.get<string[]>("customTags", ["jsx", "html"]);
-  //       const formatted = await prettier.format(text, {
-  //         parser: "typescript",
-  //         plugins: [createPlugin(tags)],
-  //         embeddedLanguageFormatting: "auto",
-  //       });
-  //       return [
-  //         vscode.TextEdit.replace(
-  //           new vscode.Range(0, 0, document.lineCount, 0),
-  //           formatted,
-  //         ),
-  //       ];
-  //     },
-  //   }),
-  // );
+  context.subscriptions.push(
+    vscode.languages.registerDocumentFormattingEditProvider(
+      [
+        { scheme: "file", language: "javascript" },
+        { scheme: "file", language: "javascriptreact" },
+        { scheme: "file", language: "typescript" },
+        { scheme: "file", language: "typescriptreact" },
+        { scheme: "untitled", language: "javascript" },
+        { scheme: "untitled", language: "javascriptreact" },
+        { scheme: "untitled", language: "typescript" },
+        { scheme: "untitled", language: "typescriptreact" },
+      ],
+      {
+        async provideDocumentFormattingEdits(document: vscode.TextDocument) {
+          const text = document.getText();
+          try {
+            const taggedConfig = vscode.workspace.getConfiguration("tagged-jsx");
+            const tags = taggedConfig.get<string[]>("customTags", ["jsx", "html"]);
+            const isTypescript = document.languageId === "typescript" || document.languageId === "typescriptreact";
+            const parser = isTypescript ? "typescript" : "babel";
+
+            const fileConfig = await resolvePrettierConfigFromFile(document);
+
+            const options = {
+              ...fileConfig,
+              ...getPrettierOptions(document),
+              parser,
+              plugins: [createPlugin(tags), parserTypescript, parserBabel],
+            };
+
+            const formatted = await prettier.format(text, options);
+            if (formatted === text) return [];
+            return [
+              vscode.TextEdit.replace(
+                new vscode.Range(0, 0, document.lineCount, 0),
+                formatted,
+              ),
+            ];
+          } catch (error) {
+            outputChannel.appendLine("Formatting error: " + String(error));
+            return [];
+          }
+        },
+      },
+    ),
+  );
 
   outputChannel.appendLine("Tagged JSX Tools (Web) activated");
 }

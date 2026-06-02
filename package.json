@@ -23,11 +23,11 @@
     "publish:transform": "npm publish --workspace=@tagged-jsx/transform --access public",
     "publish:ts-plugin": "npm publish --workspace=@tagged-jsx/ts-plugin --access public",
     "publish:prettier-plugin": "npm publish --workspace=@tagged-jsx/prettier-plugin --access public",
-    "publish:vscode": "cd packages/vs-code && npx vsce publish --no-dependencies",
+    "publish:vscode": "cd packages/vs-code && npx vsce publish",
     "publish:all": "npm run publish:parse && npm run publish:transform && npm run publish:ts-plugin && npm run publish:prettier-plugin && npm run publish:vscode",
-    "vsce:package": "cd packages/vs-code && npx vsce package --no-dependencies",
-    "vsce:publish": "cd packages/vs-code && npx vsce publish --no-dependencies",
-    "package:vscode": "cd packages/vs-code && npx vsce package --no-dependencies"
+    "vsce:package": "cd packages/vs-code && npx vsce package",
+    "vsce:publish": "cd packages/vs-code && npx vsce publish",
+    "package:vscode": "cd packages/vs-code && npx vsce package"
   },
   "dependencies": {
     "@xml-tools/parser": "^1.0.11"

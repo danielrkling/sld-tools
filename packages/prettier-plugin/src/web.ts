@@ -1,7 +1,7 @@
 import type { Plugin, Options } from "prettier";
-import tsParser from "prettier/parser-typescript";
-import babelParser from "prettier/parser-babel";
-import * as embedPlugin from "prettier-plugin-embed";
+import * as tsParser from "prettier/plugins/typescript";
+import * as babelParser from "prettier/plugins/babel";
+import * as estreePlugin from "prettier/plugins/estree";
 import { builders as docBuilders } from "prettier/doc";
 import {
   tokenize,
@@ -10,7 +10,6 @@ import {
   type ElementNode,
 } from "@tagged-jsx/parse";
 import ts from "typescript";
-
 
 const DEFAULT_TAGS = ["jsx"];
 
@@ -39,8 +38,7 @@ const printJsx = (
 
   const printChildren = (childrenToPrint: any[]): any[] => {
     const parts: any[] = [];
-    
-    // Filter out whitespace-only text nodes
+
     const validChildren = childrenToPrint.filter(
       (c) => c.type !== "TEXT" || c.value.trim() !== ""
     );
@@ -51,16 +49,12 @@ const printJsx = (
       const nextChild = validChildren[i + 1];
 
       if (child.type === "TEXT") {
-        // Replace multiple whitespace/newlines with a single space,
-        // but preserve trailing/leading space if it's adjacent to an expression.
         const textVal = child.value.replace(/\s+/g, " ");
-        
-        // If it's the first child and starts with a space, trim it
+
         let finalVal = textVal;
         if (i === 0 && finalVal.startsWith(" ")) finalVal = finalVal.substring(1);
-        // If it's the last child and ends with a space, trim it
         if (i === childCount - 1 && finalVal.endsWith(" ")) finalVal = finalVal.substring(0, finalVal.length - 1);
-        
+
         parts.push(finalVal);
       } else if (child.type === "EXPRESSION") {
         const printed = printExpression(child.value as number);
@@ -189,21 +183,21 @@ const printJsx = (
 };
 
 const createPlugin = (tags: string[] = DEFAULT_TAGS, useCallbacks: boolean = false): Plugin => {
-  const embedEstree = (embedPlugin as any).printers?.estree || (embedPlugin as any).default?.printers?.estree;
+  const baseEstree = estreePlugin.printers.estree;
   const plugin: Plugin = {
     parsers: {
       babel: {
-        ...babelParser.parsers.babel,
+        ...(babelParser.parsers?.babel || (babelParser as any).default?.parsers?.babel),
         astFormat: "estree",
       },
       typescript: {
-        ...tsParser.parsers.typescript,
+        ...(tsParser.parsers?.typescript || (tsParser as any).default?.parsers?.typescript),
         astFormat: "estree",
       },
     },
     printers: {
       estree: {
-        ...embedEstree,
+        ...baseEstree,
         embed(path, options) {
           const node = path.node as any;
           if (node.type === "TaggedTemplateExpression") {
@@ -243,8 +237,8 @@ const createPlugin = (tags: string[] = DEFAULT_TAGS, useCallbacks: boolean = fal
               return null;
             }
           }
-          if (embedEstree && embedEstree.embed) {
-            return embedEstree.embed(path, options);
+          if (baseEstree.embed) {
+            return baseEstree.embed(path, options);
           }
           return null;
         },
@@ -259,7 +253,6 @@ const plugin = createPlugin(DEFAULT_TAGS);
 export default plugin;
 export { createPlugin };
 
-// Export a factory function that creates a plugin with callbacks enabled
 export function createPluginWithCallbacks(tags?: string[]): Plugin {
   return createPlugin(tags || DEFAULT_TAGS, true);
 }
