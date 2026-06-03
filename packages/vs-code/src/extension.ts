@@ -57,7 +57,7 @@ function generateGrammar(tags: string[]): string {
 
     patterns.push({
       contentName: "meta.embedded.block.jsx",
-      begin: "(?i)\\b(\\w+)\.(" + escapeRegex(tag) + ")(\x60)",
+      begin: "(?i)\\b(\\w+)\\.(" + escapeRegex(tag) + ")(\x60)",
       beginCaptures: {
         "1": {
           name: "variable.js",
@@ -87,7 +87,7 @@ function generateGrammar(tags: string[]): string {
 
     patterns.push({
       contentName: "meta.embedded.block.jsx",
-      begin: "(?i)(\\w+\([^)]*\))\.(" + escapeRegex(tag) + ")(\x60)",
+      begin: "(?i)(\\w+\\([^)]*\\))\\.(" + escapeRegex(tag) + ")(\x60)",
       beginCaptures: {
         "1": {
           name: "entity.name.function.js",

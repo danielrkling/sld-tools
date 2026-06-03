@@ -41,7 +41,7 @@
     },
     {
       "contentName": "meta.embedded.block.jsx",
-      "begin": "(?i)\\b(\\w+).(jsx|html)(`)",
+      "begin": "(?i)\\b(\\w+)\\.(jsx|html)(`)",
       "beginCaptures": {
         "1": {
           "name": "variable.js"
@@ -70,7 +70,7 @@
     },
     {
       "contentName": "meta.embedded.block.jsx",
-      "begin": "(?i)(\\w+([^)]*)).(html|jsx)(`)",
+      "begin": "(?i)(\\w+\\([^)]*\\))\\.(html|jsx)(`)",
       "beginCaptures": {
         "1": {
           "name": "entity.name.function.js"
