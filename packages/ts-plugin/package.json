@@ -1,6 +1,6 @@
 {
   "name": "@tagged-jsx/ts-plugin",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "TypeScript language service plugin for tagged JSX templates",
   "main": "dist/index.cjs",
   "types": "dist/index.d.ts",
@@ -27,6 +27,7 @@
   ],
   "author": "",
   "license": "MIT",
+  "files": ["dist"],
   "peerDependencies": {
     "typescript": "^5.0.0"
   },
@@ -38,9 +39,9 @@
     "vitest": "^1.1.0"
   },
   "dependencies": {
-    "@tagged-jsx/parse": "file:../parse",
+    "@tagged-jsx/parse": "^1.1.2",
     "solid-js": "^1.9.12",
-    "@tagged-jsx/transform": "file:../transform"
+    "@tagged-jsx/transform": "^1.0.2"
   },
   "directories": {
     "test": "tests"
