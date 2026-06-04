@@ -2,9 +2,12 @@
 
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 
-const source = path.resolve("../ts-plugin");
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const source = path.resolve(__dirname, "..", "ts-plugin");
 const target = path.resolve(
+  __dirname,
   "node_modules/@tagged-jsx/ts-plugin",
 );
 

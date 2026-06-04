@@ -65,17 +65,18 @@ export function createJsxTransformer(
         );
       }
 
-      let parsed: RootNode;
+      let jsxCode: string;
       try {
         const tokens = tokenize(strings as unknown as TemplateStringsArray);
-        parsed = parse(tokens) as RootNode;
+        const parsed = parse(tokens) as RootNode;
+        jsxCode = printJsxFromAST(parsed, expressions, strings, result);
       } catch(e: unknown) {
         console.error('Error in tokenize/parse:', (e as Error).message);
-        console.error('strings:', strings);
-        console.error('strings.raw:', (strings as any).raw);
-        throw e;
+        jsxCode = strings[0];
+        for (let i = 0; i < expressions.length; i++) {
+          jsxCode += `{${expressions[i].getText()}}${strings[i + 1]}`;
+        }
       }
-      const jsxCode = printJsxFromAST(parsed, expressions, strings, result);
 
       result =
         result.slice(0, template.getStart()) +

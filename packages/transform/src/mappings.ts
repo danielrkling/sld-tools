@@ -71,7 +71,7 @@ export function getJsxPosition(
 export function getTaggedPosition(
   jsxPosition: number,
   reverseMappings: OffsetMapping[],
-  oldCodeLength: number,
+  taggedCodeLength: number,
 ): number | undefined {
   if (jsxPosition < 0) return undefined;
 
@@ -87,8 +87,7 @@ export function getTaggedPosition(
   const offset = jsxPosition - lastMapping.taggedPosition;
   const newPosition = lastMapping.jsxPosition + offset;
 
-  const maxPos = reverseMappings[reverseMappings.length - 1].taggedPosition;
-  if (newPosition < 0 || newPosition > maxPos) {
+  if (newPosition < 0 || newPosition > taggedCodeLength) {
     return undefined;
   }
 

@@ -112,6 +112,13 @@ describe("different tags", () => {
   });
 });
 
+describe("fallback for parse errors", () => {
+  it("should not throw on malformed JSX, produce fallback", () => {
+    const result = toJsx("const x = jsx`<div><span></div>`");
+    expect(result).not.toContain("jsx`");
+  });
+});
+
 describe("transform callbacks", () => {
   it("should transform expressions with toTagged callback", () => {
     const ts = require("typescript") as typeof import("typescript");
