@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "workspaces": [
-    "packages/*"
+    "packages/parse",
+    "packages/transform",
+    "packages/ts-plugin",
+    "packages/prettier-plugin"
   ],
   "scripts": {
     "build:parse": "npm run build --workspace=@tagged-jsx/parse",
@@ -23,11 +26,11 @@
     "publish:transform": "npm publish --workspace=@tagged-jsx/transform --access public",
     "publish:ts-plugin": "npm publish --workspace=@tagged-jsx/ts-plugin --access public",
     "publish:prettier-plugin": "npm publish --workspace=@tagged-jsx/prettier-plugin --access public",
-    "publish:vscode": "cd packages/vs-code && npx vsce publish",
+    "publish:vscode": "cd packages/vs-code && npx vsce publish --no-dependencies",
     "publish:all": "npm run publish:parse && npm run publish:transform && npm run publish:ts-plugin && npm run publish:prettier-plugin && npm run publish:vscode",
-    "vsce:package": "cd packages/vs-code && npx vsce package",
-    "vsce:publish": "cd packages/vs-code && npx vsce publish",
-    "package:vscode": "cd packages/vs-code && npx vsce package"
+    "vsce:package": "cd packages/vs-code && npx vsce package --no-dependencies",
+    "vsce:publish": "cd packages/vs-code && npx vsce publish --no-dependencies",
+    "package:vscode": "cd packages/vs-code && npx vsce package --no-dependencies"
   },
   "dependencies": {
     "@xml-tools/parser": "^1.0.11"

@@ -1,6 +1,6 @@
 {
   "name": "@tagged-jsx/prettier-plugin",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A prettier plugin for formatting tagged template JSX",
   "type": "module",
   "main": "dist/index.mjs",
@@ -48,6 +48,7 @@
     "vitest": "^1.1.0"
   },
   "dependencies": {
-    "prettier-plugin-embed": "^0.5.1"
+    "prettier-plugin-embed": "^0.5.1",
+    "@tagged-jsx/parse": "file:../parse"
   }
 }

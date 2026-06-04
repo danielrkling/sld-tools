@@ -1,4 +1,5 @@
 import { createExpressionTransformCallbacks, createJsxTransformer, createTaggedTransformer } from "@tagged-jsx/transform";
+import { createPlugin } from "@tagged-jsx/prettier-plugin";
 import vscode from "vscode";
 import ts from "typescript";
 
@@ -209,11 +210,10 @@ async function formatDocument(
 
   try {
     const prettier = await import("prettier");
-    const pluginModule = await import("@tagged-jsx/prettier-plugin");
 
     const config = vscode.workspace.getConfiguration("tagged-jsx");
     const tags = config.get<string[]>("customTags", ["jsx", "html"]);
-    const plugin = pluginModule.createPlugin(tags);
+    const plugin = createPlugin(tags);
 
     const isTypescript = document.languageId === "typescript" || document.languageId === "typescriptreact";
     const parser = isTypescript ? "typescript" : "babel";

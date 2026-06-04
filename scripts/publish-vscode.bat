@@ -17,7 +17,7 @@ if exist "%NODE_MODULES%" (
 
 echo Publishing from %VSCODE_DIR%...
 cd "%VSCODE_DIR%"
-npx vsce publish
+npx vsce publish --no-dependencies
 
 echo Restoring root node_modules...
 if exist "%NODE_MODULES_BAK%" (

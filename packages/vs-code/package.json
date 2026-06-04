@@ -6,7 +6,7 @@
   "repository": {
     "url": "https://github.com/danielkrling/tagged-jsx"
   },
-  "version": "0.0.5",
+  "version": "0.0.7",
   "engines": {
     "vscode": ">=1.70.0"
   },
@@ -148,24 +148,19 @@
       }
     ]
   },
-  "dependencies": {
-    "@tagged-jsx/prettier-plugin": "file:../prettier-plugin"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/vscode": "^1.70.0",
     "@vscode/test-web": "^0.0.80",
     "@vscode/vsce": "^3.6.0",
     "esbuild": "^0.25.9",
-    "@tagged-jsx/ts-plugin": "file:../ts-plugin",
-    "@tagged-jsx/parse": "file:../parse",
-    "@tagged-jsx/transform": "file:../transform",
     "typescript": "^5.0.0",
     "vitest": "^2.0.0"
   },
   "scripts": {
     "build:web": "esbuild ./src/extension.web.ts --bundle --format=cjs --outfile=./dist/web/extension.js --external:vscode --platform=browser --minify",
-    "build": "esbuild ./src/extension.ts --bundle --format=cjs --outfile=./dist/extension.js --external:vscode --external:prettier --external:@tagged-jsx/prettier-plugin --platform=node --minify",
+    "build": "esbuild ./src/extension.ts --bundle --format=cjs --outfile=./dist/extension.js --external:vscode --external:prettier --platform=node --minify",
     "watch:web": "esbuild ./src/extension.web.ts --bundle --format=cjs --outfile=./dist/web/extension.js --external:vscode --platform=browser --watch",
     "watch": "esbuild ./src/extension.ts --bundle --format=cjs --outfile=./dist/extension.js --external:vscode --external:prettier --external:@tagged-jsx/prettier-plugin --platform=node --watch",
     "test": "vitest run",
