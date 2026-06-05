@@ -105,22 +105,6 @@ describe("ts-plugin diagnostics", () => {
     });
   });
 
-  describe("error handling", () => {
-    it("should not throw on malformed JSX structure, produce fallback", () => {
-      const { toJsxWithMappings } = createJsxTransformer(["jsx"], ts);
-      const result = toJsxWithMappings("const x = jsx`<div><span></div>`");
-      expect(result.code).not.toContain("jsx`");
-      expect(result.mappings.mappings.length).toBeGreaterThan(0);
-    });
-
-    it("should not throw on invalid tag name, produce fallback", () => {
-      const { toJsxWithMappings } = createJsxTransformer(["jsx"], ts);
-      const result = toJsxWithMappings("const x = jsx`<></>`");
-      expect(result.code).not.toContain("jsx`");
-      expect(result.mappings.mappings.length).toBeGreaterThan(0);
-    });
-  });
-
   describe("multiple templates in one file", () => {
     it("should handle multiple templates", () => {
       const { toJsxWithMappings } = createJsxTransformer(["jsx"], ts);

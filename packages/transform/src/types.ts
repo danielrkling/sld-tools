@@ -16,6 +16,12 @@ export interface ToJsxCallbackOptions {
   sourceCode: string;
 }
 
+export interface TransformError {
+  start: number;
+  end: number;
+  message: string;
+}
+
 export interface TransformerCallbacks {
   toTagged?: (opts: ToTaggedCallbackOptions) => string;
   toJSX?: (opts: ToJsxCallbackOptions) => string;

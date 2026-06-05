@@ -205,6 +205,9 @@ export const parse = (tokens: Token[], rawStrings?: string[]): RootNode => {
 
       case OPEN_TAG_TOKEN: {
         const nextToken = tokens[++pos];
+        if (!nextToken) {
+          throw new ParseJSXError("Expected tag name or '/' after '<'");
+        }
 
         // Handle Closing Tag: </name>
         if (nextToken.type === SLASH_TOKEN) {
@@ -213,7 +216,7 @@ export const parse = (tokens: Token[], rawStrings?: string[]): RootNode => {
           const currentParent = stack[stack.length - 1] as ElementNode;
           if (
             stack.length > 1 &&
-            closeToken.type === CLOSE_TAG_TOKEN &&
+            closeToken?.type === CLOSE_TAG_TOKEN &&
             ((nameToken?.type === IDENTIFIER_TOKEN &&
               currentParent.name === nameToken.value) ||
               ((nameToken?.type === EXPRESSION_TOKEN ||

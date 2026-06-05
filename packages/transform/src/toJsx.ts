@@ -3,7 +3,7 @@ import { attachWhitespaceInfo, getPropWhitespaceBefore, getElementWhitespaceBefo
 import { computeMappings } from "./mappings";
 import type { MappingResult } from "./mappings";
 import type * as tsModule from "typescript";
-import type { TransformerCallbacks } from "./types";
+import type { TransformerCallbacks, TransformError } from "./types";
 
 export function createJsxTransformer(
   tags: string[],
@@ -23,7 +23,26 @@ export function createJsxTransformer(
     return ts.forEachChild(node, findFirstTaggedTemplate);
   }
 
-  function toJsx(code: string): string {
+  function getSegmentSourcePos(
+    template: tsModule.TaggedTemplateExpression,
+    segment: number,
+    position: number,
+  ): number | undefined {
+    const temp = template.template;
+    if (ts.isNoSubstitutionTemplateLiteral(temp)) {
+      return temp.getStart() + 1 + position;
+    }
+    if (segment === 0) {
+      return temp.head.getStart() + 1 + position;
+    }
+    const spanIndex = segment - 1;
+    if (spanIndex < temp.templateSpans.length) {
+      return temp.templateSpans[spanIndex].literal.getStart() + position;
+    }
+    return undefined;
+  }
+
+  function toJsx(code: string, errors?: TransformError[]): string {
     let result = code;
     let iterations = 0;
     const maxIterations = 100;
@@ -71,11 +90,28 @@ export function createJsxTransformer(
         const parsed = parse(tokens) as RootNode;
         jsxCode = printJsxFromAST(parsed, expressions, strings, result);
       } catch(e: unknown) {
-        console.error('Error in tokenize/parse:', (e as Error).message);
-        jsxCode = strings[0];
-        for (let i = 0; i < expressions.length; i++) {
-          jsxCode += `{${expressions[i].getText()}}${strings[i + 1]}`;
+        const msg = (e as Error).message;
+        console.error('Error in tokenize/parse:', msg);
+        if (errors) {
+          let errStart = template.template.getStart() + 1;
+          let errEnd = template.template.getEnd() - 1;
+          const segMatch = msg.match(/segment (\d+), position (\d+)$/);
+          if (segMatch) {
+            const segment = parseInt(segMatch[1]);
+            const position = parseInt(segMatch[2]);
+            const sourcePos = getSegmentSourcePos(template, segment, position);
+            if (sourcePos !== undefined) {
+              errStart = sourcePos;
+              errEnd = sourcePos + 1;
+            }
+          }
+          errors.push({
+            start: errStart,
+            end: errEnd,
+            message: msg,
+          });
         }
+        jsxCode = "true";
       }
 
       result =
@@ -87,10 +123,11 @@ export function createJsxTransformer(
     return result;
   }
 
-  function toJsxWithMappings(code: string): { code: string; mappings: MappingResult } {
-    const codeResult = toJsx(code);
+  function toJsxWithMappings(code: string): { code: string; mappings: MappingResult; errors: TransformError[] } {
+    const errors: TransformError[] = [];
+    const codeResult = toJsx(code, errors);
     const mappings = computeMappings(code, codeResult);
-    return { code: codeResult, mappings };
+    return { code: codeResult, mappings, errors };
   }
 
     function printJsxFromAST(
@@ -104,7 +141,6 @@ export function createJsxTransformer(
         return "<></>";
       }
 
-    // Attach whitespace info to AST nodes
     attachWhitespaceInfo(parsed, strings, expressions);
 
     const children = parsed.children;
@@ -117,7 +153,6 @@ export function createJsxTransformer(
       return printJsxElement(children[0], expressions, strings, sourceCode);
     }
 
-    // For multiple root elements, wrap in fragment
     let jsx = "";
     for (const child of children) {
       if (child.type === "TEXT") {
@@ -160,7 +195,6 @@ export function createJsxTransformer(
 
     const isSelfClosing = element.tokens?.openTag?.slash !== undefined;
 
-    // Build attrs with whitespace from attached info
     let attrs = "";
 
     for (let i = 0; i < props.length; i++) {
@@ -169,13 +203,10 @@ export function createJsxTransformer(
       const propValue = prop.value;
       const propType = prop.type;
 
-      // Get whitespace before this prop (from attachWhitespaceInfo)
       let whitespace = " ";
       if (i === 0) {
-        // First prop: use whitespaceBeforeFirstProp from element
         whitespace = getElementWhitespaceBeforeFirstProp(element) || " ";
       } else {
-        // Other props: use whitespaceBefore from prop
         whitespace = getPropWhitespaceBefore(prop) || " ";
       }
 
@@ -213,7 +244,6 @@ export function createJsxTransformer(
       }
     }
 
-    // Preserve whitespace after last attribute (from attachWhitespaceInfo)
     if (props.length > 0) {
       const afterLast = getElementWhitespaceAfterLastProp(element) || "";
       attrs += afterLast;

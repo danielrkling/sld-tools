@@ -5,33 +5,29 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const source = path.resolve(__dirname, "..", "ts-plugin");
-const target = path.resolve(
-  __dirname,
-  "node_modules/@tagged-jsx/ts-plugin",
-);
 
-fs.mkdirSync(target, { recursive: true });
+function syncPackage(name) {
+  const source = path.resolve(__dirname, "..", name);
+  const target = path.resolve(
+    __dirname,
+    "node_modules/@tagged-jsx",
+    name,
+  );
 
-fs.copyFileSync(
-  path.join(source, "package.json"),
-  path.join(target, "package.json"),
-);
+  fs.mkdirSync(target, { recursive: true });
 
-fs.rmSync(
-  path.join(target, "dist"),
-  {
-    recursive: true,
-    force: true,
-  },
-);
+  fs.copyFileSync(
+    path.join(source, "package.json"),
+    path.join(target, "package.json"),
+  );
 
-fs.cpSync(
-  path.join(source, "dist"),
-  path.join(target, "dist"),
-  {
-    recursive: true,
-  },
-);
+  const distTarget = path.join(target, "dist");
+  fs.rmSync(distTarget, { recursive: true, force: true });
+  fs.cpSync(path.join(source, "dist"), distTarget, { recursive: true });
 
-console.log("Synced ts-plugin");
+  console.log(`Synced ${name}`);
+}
+
+syncPackage("parse");
+syncPackage("transform");
+syncPackage("ts-plugin");

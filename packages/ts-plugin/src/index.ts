@@ -8,6 +8,7 @@ interface JsxAnalysis {
   originalCode: string;
   originalSourceFile: tsModule.SourceFile;
   scriptVersion: string | undefined;
+  templateErrors: tsModule.Diagnostic[];
 }
 
 const analysisCache = new Map<string, JsxAnalysis>();
@@ -166,7 +167,7 @@ function findFirstTemplatePosition(
 function getOrCreateAnalysis(
   fileName: string,
   info: tsModule.server.PluginCreateInfo,
-  toJsxWithMappings: (code: string) => { code: string; mappings: any },
+  toJsxWithMappings: (code: string) => { code: string; mappings: any; errors: Array<{ start: number; end: number; message: string }> },
   ts: typeof tsModule,
   tags: string[]
 ): JsxAnalysis | undefined {
@@ -187,10 +188,20 @@ function getOrCreateAnalysis(
 
     let jsxCode: string;
     let mappings: any;
+    let templateErrors: tsModule.Diagnostic[] = [];
     try {
       const result = toJsxWithMappings(originalCode);
       jsxCode = result.code;
       mappings = result.mappings;
+      templateErrors = (result.errors || []).map((err) => ({
+        file: originalSourceFile,
+        start: err.start,
+        length: err.end - err.start,
+        messageText: err.message,
+        category: ts.DiagnosticCategory.Error,
+        code: 9999,
+        source: "tagged-jsx",
+      }));
     } catch (e) {
       console.error("[tagged-jsx] Transform failed:", (e as Error).message);
       const templatePos = findFirstTemplatePosition(originalCode, tags, ts);
@@ -216,7 +227,7 @@ function getOrCreateAnalysis(
     const host = createSyntheticLSHost(fileName, jsxCode, scriptVersion, originalProgram, ts);
     const ls = ts.createLanguageService(host);
 
-    const analysis: JsxAnalysis = { ls, mappings, jsxCode, originalCode, originalSourceFile, scriptVersion };
+    const analysis: JsxAnalysis = { ls, mappings, jsxCode, originalCode, originalSourceFile, scriptVersion, templateErrors };
     analysisCache.set(fileName, analysis);
     return analysis;
   } catch (e) {
@@ -296,11 +307,11 @@ function init(modules: { typescript: typeof tsModule }) {
         return originalDiags;
       }
 
-      const { ls, mappings, jsxCode, originalCode, originalSourceFile } = analysis;
+      const { ls, mappings, jsxCode, originalCode, originalSourceFile, templateErrors } = analysis;
       const syntactic = ls.getSyntacticDiagnostics(fileName);
       const semantic = ls.getSemanticDiagnostics(fileName);
 
-      const result: tsModule.Diagnostic[] = [];
+      const result: tsModule.Diagnostic[] = [...templateErrors];
       for (const diag of [...syntactic, ...semantic]) {
         const mapped = mapDiagnostic(diag, mappings, jsxCode.length, originalCode.length, originalSourceFile);
         if (mapped) result.push(mapped);
