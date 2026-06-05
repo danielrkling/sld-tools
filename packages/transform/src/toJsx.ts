@@ -1,4 +1,4 @@
-import { tokenize, parse, RootNode } from "@tagged-jsx/parse";
+import { tokenize, parse, RootNode, ParseJSXError } from "@tagged-jsx/parse";
 import { attachWhitespaceInfo, getPropWhitespaceBefore, getElementWhitespaceBeforeFirstProp, getElementWhitespaceAfterLastProp } from "./attachWhitespace";
 import { computeMappings } from "./mappings";
 import type { MappingResult } from "./mappings";
@@ -26,20 +26,26 @@ export function createJsxTransformer(
   function getSegmentSourcePos(
     template: tsModule.TaggedTemplateExpression,
     segment: number,
-    position: number,
-  ): number | undefined {
-    const temp = template.template;
-    if (ts.isNoSubstitutionTemplateLiteral(temp)) {
-      return temp.getStart() + 1 + position;
-    }
-    if (segment === 0) {
-      return temp.head.getStart() + 1 + position;
-    }
-    const spanIndex = segment - 1;
-    if (spanIndex < temp.templateSpans.length) {
-      return temp.templateSpans[spanIndex].literal.getStart() + position;
-    }
-    return undefined;
+    startOffset: number,
+    endOffset: number,
+  ): { start: number; end: number } | undefined {
+    const basePos = (seg: number): number | undefined => {
+      const temp = template.template;
+      if (ts.isNoSubstitutionTemplateLiteral(temp)) {
+        return temp.getStart() + 1;
+      }
+      if (seg === 0) {
+        return temp.head.getStart() + 1;
+      }
+      const spanIndex = seg - 1;
+      if (spanIndex < temp.templateSpans.length) {
+        return temp.templateSpans[spanIndex].literal.getStart();
+      }
+      return undefined;
+    };
+    const base = basePos(segment);
+    if (base === undefined) return undefined;
+    return { start: base + startOffset, end: base + endOffset };
   }
 
   function toJsx(code: string, errors?: TransformError[]): string {
@@ -95,14 +101,11 @@ export function createJsxTransformer(
         if (errors) {
           let errStart = template.template.getStart() + 1;
           let errEnd = template.template.getEnd() - 1;
-          const segMatch = msg.match(/segment (\d+), position (\d+)$/);
-          if (segMatch) {
-            const segment = parseInt(segMatch[1]);
-            const position = parseInt(segMatch[2]);
-            const sourcePos = getSegmentSourcePos(template, segment, position);
+          if (e instanceof ParseJSXError && e.token) {
+            const sourcePos = getSegmentSourcePos(template, e.token.segment, e.token.start, e.token.end);
             if (sourcePos !== undefined) {
-              errStart = sourcePos;
-              errEnd = sourcePos + 1;
+              errStart = sourcePos.start;
+              errEnd = sourcePos.end;
             }
           }
           errors.push({

@@ -277,9 +277,8 @@ export const parse = (tokens: Token[], rawStrings?: string[]): RootNode => {
                 pos += 2; // Consume '...' and expression
               } else {
                 throw new ParseJSXError(
-                  `Spread operator must be followed by an expression. `,
-                  attrToken.segment,
-                  attrToken.start,
+                  `Spread operator must be followed by an expression.`,
+                  attrToken,
                 );
               }
             } else if (attrToken.type === IDENTIFIER_TOKEN) {
@@ -362,8 +361,7 @@ export const parse = (tokens: Token[], rawStrings?: string[]): RootNode => {
             } else {
               throw new ParseJSXError(
                 `Invalid attribute: unexpected ${attrToken.type}.`,
-                (attrToken as BaseToken).segment,
-                (attrToken as BaseToken).start,
+                attrToken as BaseToken,
               );
             }
           }
@@ -385,8 +383,7 @@ export const parse = (tokens: Token[], rawStrings?: string[]): RootNode => {
         } else {
           throw new ParseJSXError(
             `Expected tag name after "<"`,
-            (token as BaseToken)?.segment,
-            (token as BaseToken)?.start,
+            token,
           );
         }
       }
@@ -426,8 +423,7 @@ export const parse = (tokens: Token[], rawStrings?: string[]): RootNode => {
       default:
         throw new ParseJSXError(
           `Unexpected token: ${JSON.stringify(token)}`,
-          (token as BaseToken)?.segment,
-          (token as BaseToken)?.start,
+          token as BaseToken,
         );
     }
   }

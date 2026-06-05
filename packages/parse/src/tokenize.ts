@@ -234,7 +234,7 @@ export const tokenize = (strings: TemplateStringsArray | string[]): Token[] => {
             const endQuoteIndex = str.indexOf(char, cursor + 1);
 
             if (endQuoteIndex === -1) {
-              throw new ParseJSXError(`Unterminated string`, i, cursor);
+              throw new ParseJSXError(`Unterminated string`, { segment: i, start: cursor, end: cursor + 1 });
             }
             tokens.push({
               type: STRING_TOKEN,
@@ -272,8 +272,7 @@ export const tokenize = (strings: TemplateStringsArray | string[]): Token[] => {
           } else {
             throw new ParseJSXError(
               `Unexpected character: '${str[cursor]}'`,
-              i,
-              cursor,
+              { segment: i, start: cursor, end: cursor + 1 },
             );
           }
           break;

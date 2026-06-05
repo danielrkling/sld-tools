@@ -1,12 +1,23 @@
-import { BaseToken } from "./tokenize";
+export interface ErrorToken {
+  segment?: number;
+  start?: number;
+  end?: number;
+}
 
 export class ParseJSXError extends Error {
+  token?: ErrorToken;
+  
   constructor(
     message: string,
-    segment?: number,
-    position?: number
+    token?: ErrorToken,
   ) {
-    super(message+ (segment !== undefined && position !== undefined ? ` segment ${segment}, position ${position}` : ""));
+    super(
+      message +
+        (token
+          ? ` ${token.segment}:${token.start}-${token.end}`
+          : ""),
+    );
     this.name = "ParseJSXError";
+    this.token = token;
   }
 }
