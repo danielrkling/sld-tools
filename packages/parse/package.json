@@ -1,6 +1,6 @@
 {
   "name": "@tagged-jsx/parse",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "description": "A JSX parser for JavaScript tagged template literals",
   "type": "module",
   "main": "dist/index.mjs",

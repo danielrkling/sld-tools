@@ -1,6 +1,6 @@
 {
   "name": "@tagged-jsx/transform",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Transform between tagged template literals and JSX syntax",
   "main": "dist/index.mjs",
   "types": "dist/index.d.mts",
@@ -38,7 +38,7 @@
   },
   "dependencies": {
     "diff": "^9.0.0",
-    "@tagged-jsx/parse": "^1.1.2",
+    "@tagged-jsx/parse": "^1.2.0",
     "typescript": "^5.3.3"
   }
 }
