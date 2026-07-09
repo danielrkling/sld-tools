@@ -10,7 +10,7 @@ describe("ts-plugin diagnostics", () => {
     });
 
     it("should accept custom tags", () => {
-      const { toJsxWithMappings } = createJsxTransformer(["html", "custom"], ts);
+      const toJsxWithMappings = createJsxTransformer(["html", "custom"], ts);
       const result = toJsxWithMappings("const x = html`<div></div>`");
       expect(result.code).toContain("<div></div>");
     });
@@ -175,7 +175,7 @@ const a = jsx\`<div>hello</div>\`;`;
     it("should return completions at attribute value inside template", () => {
       const code = `const x = html\`<div class="hello"></div>\`;`;
 
-      const { toJsxWithMappings } = createJsxTransformer(["html", "jsx"], ts);
+      const toJsxWithMappings = createJsxTransformer(["html", "jsx"], ts);
       const { code: jsxCode, mappings } = toJsxWithMappings(code);
 
       const classPos = code.indexOf(`"hello"`);
@@ -190,7 +190,7 @@ const a = jsx\`<div>hello</div>\`;`;
 
     it("should return completions at element name inside template", () => {
       const code = "const x = html`<div></div>`;";
-      const { toJsxWithMappings } = createJsxTransformer(["html", "jsx"], ts);
+      const toJsxWithMappings = createJsxTransformer(["html", "jsx"], ts);
       const { code: jsxCode, mappings } = toJsxWithMappings(code);
 
       const pos = code.indexOf("<div") + 1;
@@ -205,7 +205,7 @@ const a = jsx\`<div>hello</div>\`;`;
 
     it("should map positions correctly with template expressions", () => {
       const code = `const x = html\`<div class=\${name}>\${value}</div>\`;`;
-      const { toJsxWithMappings } = createJsxTransformer(["html", "jsx"], ts);
+      const toJsxWithMappings = createJsxTransformer(["html", "jsx"], ts);
       const { code: jsxCode, mappings } = toJsxWithMappings(code);
 
       const namePos = code.indexOf("name");
@@ -225,7 +225,7 @@ const a = jsx\`<div>hello</div>\`;`;
 
     it("should return rename info for lowercase div (canRename: false)", () => {
       const code = "const x = html`<div>hello</div>`;";
-      const { toJsxWithMappings } = createJsxTransformer(["html", "jsx"], ts);
+      const toJsxWithMappings = createJsxTransformer(["html", "jsx"], ts);
       const { code: jsxCode, mappings } = toJsxWithMappings(code);
 
       const divPos = code.indexOf("<div>") + 1;
@@ -244,7 +244,7 @@ const a = jsx\`<div>hello</div>\`;`;
     it("should return rename info for a component (canRename: true)", () => {
       const code = `import { Show } from "solid-js";
 const x = html\`<Show when=\${true}>hello</Show>\`;`;
-      const { toJsxWithMappings } = createJsxTransformer(["html", "jsx"], ts);
+      const toJsxWithMappings = createJsxTransformer(["html", "jsx"], ts);
       const { code: jsxCode, mappings } = toJsxWithMappings(code);
 
       const showPos = code.indexOf("<Show") + 1;
@@ -312,7 +312,7 @@ const x = <button o type="button" />;`;
 }
 const x = html\`<button type="button"></button>\`;`;
 
-      const { toJsxWithMappings } = createJsxTransformer(["html", "jsx"], ts);
+      const toJsxWithMappings = createJsxTransformer(["html", "jsx"], ts);
       const { code: jsxCode, mappings } = toJsxWithMappings(originalCode);
 
       const typePrefixPos = originalCode.indexOf("button ") + "button ".length;
@@ -338,7 +338,7 @@ const x = html\`<button type="button"></button>\`;`;
 }
 const x = html\`<button type="button"></button>\`;`;
 
-      const { toJsxWithMappings } = createJsxTransformer(["html", "jsx"], ts);
+      const toJsxWithMappings = createJsxTransformer(["html", "jsx"], ts);
       const { code: jsxCode, mappings } = toJsxWithMappings(originalCode);
 
       const position = originalCode.indexOf("button ") + "button ".length;
@@ -539,7 +539,7 @@ const x = <button o type="button" />;`;
 
     it("should provide completions through the full proxy pipeline (simulated)", () => {
       const code = `const x = html\`<div class="hello"></div>\`;`;
-      const { toJsxWithMappings } = createJsxTransformer(["html", "jsx"], ts);
+      const toJsxWithMappings = createJsxTransformer(["html", "jsx"], ts);
       const { code: jsxCode, mappings } = toJsxWithMappings(code);
 
       const attributePos = code.indexOf(`"hello"`);
@@ -570,7 +570,7 @@ const x = <button o type="button" />;`;
     it("should provide quick info through the full proxy pipeline (simulated)", () => {
       const code = `import { Show } from "solid-js";
 const x = html\`<Show when=\${true}>hello</Show>\`;`;
-      const { toJsxWithMappings } = createJsxTransformer(["html", "jsx"], ts);
+      const toJsxWithMappings = createJsxTransformer(["html", "jsx"], ts);
       const { code: jsxCode, mappings } = toJsxWithMappings(code);
 
       const showPos = code.indexOf("<Show") + 1;
@@ -586,7 +586,7 @@ const x = html\`<Show when=\${true}>hello</Show>\`;`;
     it("should provide definition through the full proxy pipeline (simulated)", () => {
       const code = `import { Show } from "solid-js";
 const x = html\`<Show when=\${true}>hello</Show>\`;`;
-      const { toJsxWithMappings } = createJsxTransformer(["html", "jsx"], ts);
+      const toJsxWithMappings = createJsxTransformer(["html", "jsx"], ts);
       const { code: jsxCode, mappings } = toJsxWithMappings(code);
 
       const showPos = code.indexOf("<Show") + 1;
@@ -603,7 +603,7 @@ const x = html\`<Show when=\${true}>hello</Show>\`;`;
     it("should return rename locations for a component inside template", () => {
       const code = `import { Show } from "solid-js";
 const x = html\`<Show when=\${true}>hello</Show>\`;`;
-      const { toJsxWithMappings } = createJsxTransformer(["html", "jsx"], ts);
+      const toJsxWithMappings = createJsxTransformer(["html", "jsx"], ts);
       const { code: jsxCode, mappings } = toJsxWithMappings(code);
 
       const showPos = code.indexOf("<Show") + 1;

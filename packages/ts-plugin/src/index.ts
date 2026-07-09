@@ -383,24 +383,6 @@ function init(modules: { typescript: typeof tsModule }) {
           return e;
         });
 
-        // Also request completions at JSX position 1 to get element tag names,
-        // and merge them in (dedup by name)
-        try {
-          const elementCompletions = analysis.ls.getCompletionsAtPosition(fileName, 1, {});
-          if (elementCompletions && elementCompletions.entries.length > 0) {
-            const existingNames = new Set(entries.map(e => e.name));
-            const elementEntries = elementCompletions.entries
-              .filter(e => !existingNames.has(e.name))
-              .map(e => ({ ...e, replacementSpan: undefined }));
-            if (elementEntries.length > 0) {
-              console.error("[tagged-jsx]   merged", elementEntries.length, "element completions from JSX position 1");
-              entries.push(...elementEntries);
-            }
-          }
-        } catch (e2) {
-          console.error("[tagged-jsx]   error getting element completions:", (e2 as Error).message);
-        }
-
         let optionalReplacementSpan = completions.optionalReplacementSpan;
         if (optionalReplacementSpan) {
           optionalReplacementSpan = mapTextSpan(optionalReplacementSpan, analysis.mappings, analysis.originalCode.length);
