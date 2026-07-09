@@ -27,6 +27,8 @@ import {
   COMMENT_START_TOKEN,
   CommentEndToken,
   CommentStartToken,
+  UNEXPECTED_CHARACTER_TOKEN,
+  UnexpectedCharacterToken,
 } from "./tokenize";
 
 // Node type constants
@@ -77,7 +79,7 @@ export interface ElementNode {
     closeTag?: {
       open: OpenTagToken;
       slash: SlashToken;
-      name: TagNameToken;
+      name: TagNameToken | ExpressionToken;
       close: CloseTagToken;
     };
   };
@@ -211,14 +213,18 @@ export const parse = (tokens: Token[], rawStrings?: string[]): RootNode => {
       }
 
       case OPEN_TAG_TOKEN: {
-        const nextToken = tokens[++pos];
+        pos++;
+        while (tokens[pos]?.type === WHITESPACE_TOKEN) pos++;
+        const nextToken = tokens[pos];
         if (!nextToken) {
           throw new ParseJSXError("Expected tag name or '/' after '<'");
         }
 
         // Handle Closing Tag: </name>
         if (nextToken.type === SLASH_TOKEN) {
-          const nameToken = tokens[++pos];
+          pos++;
+          while (tokens[pos]?.type === WHITESPACE_TOKEN) pos++;
+          const nameToken = tokens[pos];
           const closeToken = tokens[++pos];
           const currentParent = stack[stack.length - 1] as ElementNode;
           if (
@@ -226,15 +232,14 @@ export const parse = (tokens: Token[], rawStrings?: string[]): RootNode => {
             closeToken?.type === CLOSE_TAG_TOKEN &&
             ((nameToken?.type === TAG_NAME_TOKEN &&
               currentParent.name === (nameToken as TagNameToken).value) ||
-              ((nameToken?.type === EXPRESSION_TOKEN ||
-                nameToken.type === SLASH_TOKEN) &&
+              (nameToken?.type === EXPRESSION_TOKEN &&
                 typeof currentParent.name === "number"))
           ) {
             stack.pop();
             pos++;
             continue;
           }
-          throw new Error("Mismatched closing tag.");
+          throw new ParseJSXError("Mismatched closing tag", token);
         }
 
         // Handle Opening Tag: <name ...>
@@ -313,6 +318,12 @@ export const parse = (tokens: Token[], rawStrings?: string[]): RootNode => {
                   });
                   pos++;
                 } else if (valToken.type === STRING_TOKEN) {
+                  if (valToken.end - valToken.start !== valToken.value.length + 2) {
+                    throw new ParseJSXError(
+                      "Unterminated string literal",
+                      valToken,
+                    );
+                  }
                   node.props.push({
                     name,
                     type: STRING_PROP,
@@ -324,6 +335,11 @@ export const parse = (tokens: Token[], rawStrings?: string[]): RootNode => {
                     },
                   });
                   pos++;
+                } else {
+                  throw new ParseJSXError(
+                    `Expected attribute value after "="`,
+                    valToken,
+                  );
                 }
               } else {
                 // Boolean prop
@@ -395,6 +411,13 @@ export const parse = (tokens: Token[], rawStrings?: string[]): RootNode => {
             token,
           );
         }
+      }
+
+      case UNEXPECTED_CHARACTER_TOKEN: {
+        throw new ParseJSXError(
+          `Unexpected character: ${(token as UnexpectedCharacterToken).value}`,
+          token as UnexpectedCharacterToken,
+        );
       }
 
       case COMMENT_START_TOKEN: {

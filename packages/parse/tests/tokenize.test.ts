@@ -7,7 +7,7 @@ import {
   TAG_NAME_TOKEN,
   PROP_NAME_TOKEN,
   EQUALS_TOKEN,
-  QUOTED_STRING_TOKEN,
+  STRING_TOKEN,
   TEXT_TOKEN,
   EXPRESSION_TOKEN,
   SPREAD_TOKEN,
@@ -82,7 +82,7 @@ describe("attribute values", () => {
       { type: PROP_NAME_TOKEN, value: "id", segment: 0, start: 5, end: 7 },
       { type: EQUALS_TOKEN, segment: 0, start: 7, end: 8 },
       {
-        type: QUOTED_STRING_TOKEN,
+        type: STRING_TOKEN,
         value: "hello",
         quote: '"',
         segment: 0,
@@ -103,7 +103,7 @@ describe("attribute values", () => {
       { type: PROP_NAME_TOKEN, value: "id", segment: 0, start: 5, end: 7 },
       { type: EQUALS_TOKEN, segment: 0, start: 7, end: 8 },
       {
-        type: QUOTED_STRING_TOKEN,
+        type: STRING_TOKEN,
         value: "hello",
         quote: "'",
         segment: 0,
@@ -124,7 +124,7 @@ describe("attribute values", () => {
       { type: PROP_NAME_TOKEN, value: "class", segment: 0, start: 5, end: 10 },
       { type: EQUALS_TOKEN, segment: 0, start: 10, end: 11 },
       {
-        type: QUOTED_STRING_TOKEN,
+        type: STRING_TOKEN,
         value: "",
         quote: '"',
         segment: 0,
@@ -160,7 +160,7 @@ describe("attribute values", () => {
 
     expect(tokens).toContainEqual(
       expect.objectContaining({
-        type: QUOTED_STRING_TOKEN,
+        type: STRING_TOKEN,
         value: "value with 'nested' quotes",
       }),
     );
@@ -171,7 +171,7 @@ describe("attribute values", () => {
 
     expect(tokens).toContainEqual(
       expect.objectContaining({
-        type: QUOTED_STRING_TOKEN,
+        type: STRING_TOKEN,
         value: "!@#$%^&*()_+-=[]{}|;:,.<>?",
       }),
     );
@@ -187,7 +187,7 @@ describe("attribute values", () => {
       { type: PROP_NAME_TOKEN, value: "attr", segment: 0, start: 5, end: 9 },
       { type: EQUALS_TOKEN, segment: 0, start: 9, end: 10 },
       {
-        type: QUOTED_STRING_TOKEN,
+        type: STRING_TOKEN,
         value: "",
         quote: '"',
         segment: 0,
@@ -203,7 +203,7 @@ describe("attribute values", () => {
 
     expect(tokens).toContainEqual(
       expect.objectContaining({
-        type: QUOTED_STRING_TOKEN,
+        type: STRING_TOKEN,
         value: "https://example.com/path?query=value&other=test#section",
       }),
     );
@@ -234,7 +234,7 @@ describe("attribute values", () => {
       },
       { type: EQUALS_TOKEN, segment: 0, start: 22, end: 23 },
       {
-        type: QUOTED_STRING_TOKEN,
+        type: STRING_TOKEN,
         value: "",
         quote: '"',
         segment: 0,
@@ -343,7 +343,7 @@ describe("whitespace handling", () => {
       { type: EQUALS_TOKEN, segment: 0, start: 16, end: 17 },
       { type: WHITESPACE_TOKEN, value: "   ", segment: 0, start: 17, end: 20 },
       {
-        type: QUOTED_STRING_TOKEN,
+        type: STRING_TOKEN,
         value: "app",
         quote: '"',
         segment: 0,
@@ -630,7 +630,7 @@ describe("invalid syntax (non-throwing)", () => {
 
   it("should handle unterminated string gracefully", () => {
     const tokens = tokenizeTemplate`<div id="hello`;
-    expect(tokens.some((t) => t.type === QUOTED_STRING_TOKEN)).toBe(true);
+    expect(tokens.some((t) => t.type === STRING_TOKEN)).toBe(true);
     expect(() => tokenizeTemplate`<div id="hello`).not.toThrow();
   });
 
@@ -641,7 +641,7 @@ describe("invalid syntax (non-throwing)", () => {
 
   it("should handle unterminated string with > inside gracefully", () => {
     const tokens = tokenizeTemplate`<div id="hello>`;
-    expect(tokens.some((t) => t.type === QUOTED_STRING_TOKEN)).toBe(true);
+    expect(tokens.some((t) => t.type === STRING_TOKEN)).toBe(true);
     expect(() => tokenizeTemplate`<div id="hello>`).not.toThrow();
   });
 });
@@ -686,7 +686,7 @@ describe("bad but valid syntaxes", () => {
     );
     expect(tokens).toContainEqual(
       expect.objectContaining({
-        type: QUOTED_STRING_TOKEN,
+        type: STRING_TOKEN,
         value: "value",
       }),
     );
@@ -790,6 +790,43 @@ describe("comments handling", () => {
       { type: TEXT_TOKEN, value: " comment ", segment: 0, start: 7, end: 16 },
       { type: COMMENT_END_TOKEN, value: "*/", segment: 0, start: 16, end: 18 },
       { type: ">", segment: 0, start: 18, end: 19 },
+    ]);
+  });
+
+  it("should tokenize line comment before tag name", () => {
+    const tokens = tokenizeTemplate`< // comment\nName>`;
+    expect(tokens).toEqual([
+      { type: "<", segment: 0, start: 0, end: 1 },
+      { type: WHITESPACE_TOKEN, value: " ", segment: 0, start: 1, end: 2 },
+      { type: COMMENT_START_TOKEN, value: "//", segment: 0, start: 2, end: 4 },
+      { type: TEXT_TOKEN, value: " comment", segment: 0, start: 4, end: 12 },
+      { type: COMMENT_END_TOKEN, value: "\n", segment: 0, start: 12, end: 13 },
+      { type: TAG_NAME_TOKEN, value: "Name", segment: 0, start: 13, end: 17 },
+      { type: ">", segment: 0, start: 17, end: 18 },
+    ]);
+  });
+
+  it("should tokenize block comment before tag name", () => {
+    const tokens = tokenizeTemplate`< /* comment */Name>`;
+    expect(tokens).toEqual([
+      { type: "<", segment: 0, start: 0, end: 1 },
+      { type: WHITESPACE_TOKEN, value: " ", segment: 0, start: 1, end: 2 },
+      { type: COMMENT_START_TOKEN, value: "/*", segment: 0, start: 2, end: 4 },
+      { type: TEXT_TOKEN, value: " comment ", segment: 0, start: 4, end: 13 },
+      { type: COMMENT_END_TOKEN, value: "*/", segment: 0, start: 13, end: 15 },
+      { type: TAG_NAME_TOKEN, value: "Name", segment: 0, start: 15, end: 19 },
+      { type: ">", segment: 0, start: 19, end: 20 },
+    ]);
+  });
+
+  it("should treat // immediately after < as slashes not comment", () => {
+    const tokens = tokenizeTemplate`<//Name>`;
+    expect(tokens).toEqual([
+      { type: "<", segment: 0, start: 0, end: 1 },
+      { type: SLASH_TOKEN, segment: 0, start: 1, end: 2 },
+      { type: SLASH_TOKEN, segment: 0, start: 2, end: 3 },
+      { type: TAG_NAME_TOKEN, value: "Name", segment: 0, start: 3, end: 7 },
+      { type: ">", segment: 0, start: 7, end: 8 },
     ]);
   });
 });

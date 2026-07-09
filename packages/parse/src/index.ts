@@ -1,15 +1,13 @@
 export { ParseJSXError } from "./error";
 export { tokenize } from "./tokenize";
 export {
-  tokenize as tokenizeDev,
   OPEN_TAG_TOKEN,
   CLOSE_TAG_TOKEN,
   SLASH_TOKEN,
   TAG_NAME_TOKEN,
-  TAG_NAME_TOKEN as IDENTIFIER_TOKEN,
   PROP_NAME_TOKEN,
   EQUALS_TOKEN,
-  STRING_TOKEN as QUOTED_STRING_TOKEN,
+  STRING_TOKEN,
   TEXT_TOKEN,
   EXPRESSION_TOKEN,
   SPREAD_TOKEN,
@@ -19,7 +17,6 @@ export {
   UNEXPECTED_CHARACTER_TOKEN,
   type Token,
   type TagNameToken,
-  type TagNameToken as IdentifierToken,
   type PropNameToken,
   type TextToken,
   type ExpressionToken,
@@ -27,7 +24,7 @@ export {
   type CloseTagToken,
   type SlashToken,
   type EqualsToken,
-  type StringToken as QuotedStringToken,
+  type StringToken,
   type SpreadToken,
   type CommentStartToken,
   type CommentEndToken,

@@ -13,6 +13,7 @@ import {
   SPREAD_PROP,
   CommentNode,
   CLOSE_TAG_TOKEN,
+  UNEXPECTED_CHARACTER_TOKEN,
 } from "../src/index";
 
 function parseTemplate(strings: TemplateStringsArray, ...values: any[]) {
@@ -59,6 +60,13 @@ describe("parse - basic elements", () => {
     const child = result.children[0] as any;
     expect(child.name).toBe("div");
     expect(child.tokens.openTag.close).toBeDefined();
+  });
+
+  it("should parse element with whitespace before tag name", () => {
+    const result = parseTemplate`< div></ div>`;
+
+    const child = result.children[0] as any;
+    expect(child.name).toBe("div");
   });
 });
 
@@ -203,7 +211,7 @@ describe("parse - dynamic tag names", () => {
   });
 
   it("should parse dynamic tag name with children", () => {
-    const result = parseTemplate`<${"Tag"}>Content<//>`;
+    const result = parseTemplate`<${"Tag"}>Content</${"Tag"}>`;
 
     const child = result.children[0] as any;
     expect(child.type).toBe(ELEMENT_NODE);
@@ -433,11 +441,11 @@ describe("parse - error cases", () => {
   });
 
   it("should throw descriptive error on mismatched closing tag", () => {
-    expect(() => parseTemplate`<div></span>`).toThrow("Mismatched closing tag.");
+    expect(() => parseTemplate`<div></span>`).toThrow("Mismatched closing tag");
   });
 
   it("should throw descriptive error on wrong closing tag with nested elements", () => {
-    expect(() => parseTemplate`<div><span></p>`).toThrow("Mismatched closing tag.");
+    expect(() => parseTemplate`<div><span></p>`).toThrow("Mismatched closing tag");
   });
 
   it("should throw descriptive error on missing tag name after <", () => {
@@ -462,6 +470,20 @@ describe("parse - error cases", () => {
 
   it("should throw for unexptected token in text state", () => {
     expect(() => parse([{ type: CLOSE_TAG_TOKEN, segment: 0, start: 0, end: 1 }])).toThrow();
+  });
+
+  it("should throw for unterminated string literal", () => {
+    expect(() => parseTemplate`<div id="hello`).toThrow("Unterminated string literal");
+  });
+
+  it("should throw for unexpected value after equals", () => {
+    expect(() => parseTemplate`<div id=foo>`).toThrow('Expected attribute value after "="');
+  });
+
+  it("should throw for unexpected character token at top level", () => {
+    expect(() => parse([
+      { type: UNEXPECTED_CHARACTER_TOKEN, value: "@", segment: 0, start: 0, end: 1 } as any,
+    ])).toThrow("Unexpected character: @");
   });
 });
 
