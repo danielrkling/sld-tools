@@ -1,7 +1,6 @@
 export { createJsxTransformer } from "./toJsx";
-export { toJsx, toJsxWithMappings } from "./toJsx";
-export { createTaggedTransformer, toTagged, toTaggedWithMappings } from "./toTagged";
-export { getJsxPosition, getTaggedPosition, computeMappings } from "./mappings";
+export { createTaggedTransformer } from "./toTagged";
+export { computeMappings, getJsxPosition, getTaggedPosition } from "./mappings";
 export type { MappingResult } from "./mappings";
-export type { TransformerCallbacks, ToTaggedCallbackOptions, ToJsxCallbackOptions } from "./types";
+export type { TransformerCallbacks, ToTaggedCallbackOptions, ToJsxCallbackOptions, TransformError } from "./types";
 export { createExpressionTransformCallbacks } from "./callbacks";

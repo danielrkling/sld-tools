@@ -136,7 +136,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
         try {
           const text = document.getText();
-          const result = toJSXTransform.toJsx(text);
+          const result = toJSXTransform(text).code;
 
           if (result !== text) {
             const edit = new vscode.TextEdit(
@@ -171,7 +171,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
         try {
           const text = document.getText();
-          const result = toTaggedTransform.toTagged(text);
+          const result = toTaggedTransform(text).code;
 
           if (result !== text) {
             const edit = new vscode.TextEdit(
@@ -214,9 +214,9 @@ export async function activate(context: vscode.ExtensionContext) {
         let result: string;
 
         if (hasTemplates) {
-          result = toJSXTransform.toJsx(text);
+          result = toJSXTransform(text).code;
         } else {
-          result = toTaggedTransform.toTagged(text);
+          result = toTaggedTransform(text).code;
         }
 
         if (result !== text) {

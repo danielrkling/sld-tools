@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { toJsx, toTagged } from "@tagged-jsx/transform";
+import { createJsxTransformer, createTaggedTransformer } from "@tagged-jsx/transform";
+import * as ts from "typescript";
 import * as fs from "fs";
 import * as path from "path";
 import { fileURLToPath } from "url";
@@ -8,6 +9,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const fixturesDir = path.join(__dirname, "fixtures");
+
+const toJsx = createJsxTransformer(["jsx"], ts);
+const toTagged = createTaggedTransformer("jsx", ts);
 
 describe("sld-to-jsx", () => {
   const inputDir = path.join(fixturesDir, "sld-to-jsx", "input");
@@ -30,7 +34,7 @@ describe("sld-to-jsx", () => {
         ? fs.readFileSync(outputPath, "utf-8").trim() 
         : "";
       
-      const result = toJsx(input);
+      const result = toJsx(input).code;
       expect(result.trim()).toBe(expected.trim());
     });
   }
@@ -57,7 +61,7 @@ describe("jsx-to-sld", () => {
         ? fs.readFileSync(outputPath, "utf-8").trim() 
         : "";
       
-      const result = toTagged(input);
+      const result = toTagged(input).code;
       expect(result.trim()).toBe(expected.trim());
     });
   }

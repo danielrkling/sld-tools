@@ -1,5 +1,6 @@
 import type * as tsModule from "typescript";
-import { computeMappings, getJsxPosition, getTaggedPosition, MappingResult } from "./mappings";
+import { computeMappings } from "./mappings";
+import type { MappingResult } from "./mappings";
 import type { TransformerCallbacks, ToTaggedCallbackOptions } from "./types";
 
 export function createTaggedTransformer(
@@ -173,6 +174,12 @@ export function createTaggedTransformer(
         }
         return "${" + text + "}";
       }
+      const fullText = sourceFile.text.slice(child.getStart(), child.getEnd());
+      const inner = fullText.slice(1, -1).trim();
+      if (inner.startsWith("/*") && inner.endsWith("*/")) {
+        const content = inner.slice(2, -2).trim();
+        return content ? `<!-- ${content} -->` : "<!---->";
+      }
       return "";
     } else if (ts.isJsxText(child)) {
       return child.getText(sourceFile);
@@ -335,12 +342,5 @@ export function createTaggedTransformer(
     return `${children}`;
   }
 
-  return { toTagged, toTaggedWithMappings };
+  return toTaggedWithMappings;
 }
-
-// Backward compatibility
-import * as ts from "typescript";
-export const { toTagged, toTaggedWithMappings } = createTaggedTransformer("jsx", ts);
-
-export { getJsxPosition, getTaggedPosition, computeMappings } from "./mappings";
-export type { MappingResult } from "./mappings";

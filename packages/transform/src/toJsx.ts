@@ -132,10 +132,18 @@ export function createJsxTransformer(
           break;
         }
         case COMMENT_START_TOKEN:
-          result += "{/*";
+          if (token.value === "<!--") {
+            result += "{/*";
+          } else {
+            result += token.value;
+          }
           break;
         case COMMENT_END_TOKEN:
-          result += "*/}";
+          if (token.value === "-->") {
+            result += "*/}";
+          } else {
+            result += token.value;
+          }
           break;
       }
     }
@@ -203,19 +211,10 @@ export function createJsxTransformer(
     return result;
   }
 
-  function toJsxWithMappings(code: string): { code: string; mappings: MappingResult; errors: TransformError[] } {
+  return function toJsxWithMappings(code: string): { code: string; mappings: MappingResult; errors: TransformError[] } {
     const errors: TransformError[] = [];
     const codeResult = toJsx(code);
     const mappings = computeMappings(code, codeResult);
     return { code: codeResult, mappings, errors };
-  }
-
-  return { toJsx, toJsxWithMappings };
+  };
 }
-
-// Backward compatibility - default jsx transformer
-import * as ts from "typescript";
-export const { toJsx, toJsxWithMappings } = createJsxTransformer(["jsx"], ts);
-
-export { computeMappings } from "./mappings";
-export type { MappingResult } from "./mappings";
