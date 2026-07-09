@@ -12,6 +12,9 @@ This library is designed for speed and a small bundle size, making it ideal for 
 -   **Attribute Variety**: Parses boolean attributes, static key/value attributes, and attributes with embedded expressions.
 -   **Special Element Handling**: Configurable support for `void` elements (e.g., `<input>`) and `raw text` elements (e.g., `<script>`, `<style>`).
 -   **Whitespace Control**: Intelligently removes superfluous whitespace between elements while preserving meaningful text nodes.
+-   **Comments in Tags**: Line (`//`) and block (`/* */`) comments supported inside tag brackets.
+-   **Graceful Tokenizer**: Emits `UNEXPECTED_CHARACTER_TOKEN` for invalid syntax rather than throwing, giving downstream consumers control over error handling.
+-   **Whitespace Tolerance**: Whitespace allowed between `</` and the tag name in closing tags.
 -   **Zero Dependencies**: Written in pure TypeScript with no external libraries.
 
 ## Strict Syntax
@@ -25,12 +28,14 @@ This parser enforces strict syntax rules for robustness:
     -   Spread: `...${props}`
 -   **Identifier Rules**: Tag and attribute names must start with a letter, `_`, or `$`, and can contain letters, digits, `_`, `-`, `.`, or `:`.
 -   **Quotes Required**: String attribute values must be quoted (`"` or `'`).
--   **Descriptive Errors**: All errors include position information for easy debugging.
+-   **Comments in Tags**: Line (`//`) and block (`/* */`) comments are supported inside tag brackets (`<`…`>`).
+-   **Graceful Error Handling**: The tokenizer produces `UNEXPECTED_CHARACTER_TOKEN` for invalid syntax instead of throwing, allowing downstream consumers to control error handling. The parser throws descriptive `ParseJSXError`s with position information.
+-   **Whitespace Tolerance**: Whitespace is allowed between `</` and the tag name in closing tags.
 
 ## Installation
 
 ```bash
-npm install parse-jsx
+npm install @tagged-jsx/parse
 ```
 
 ## Usage
@@ -38,7 +43,7 @@ npm install parse-jsx
 The library exports two main functions: `tokenize` and `parse`. You typically use them together to convert a template string into an AST.
 
 ```typescript
-import { tokenize, parse } from './your-parser-library';
+import { tokenize, parse } from '@tagged-jsx/parse';
 
 // 1. Define your template string with expressions.
 // NOTE: This example uses a tagged template literal, which is what the
@@ -122,17 +127,39 @@ The library operates in two distinct phases for maximum efficiency and separatio
 
 ### `tokenize(strings)`
 
--   **`strings`**: `TemplateStringsArray`. The array of strings from a tagged template literal.
+-   **`strings`**: `TemplateStringsArray | string[]`. The array of strings from a tagged template literal.
 -   **Returns**: `Token[]`. An array of token objects.
 
-### Token Structure (Dev Mode)
+### Token Types
+
+| Token | Description |
+|-------|-------------|
+| `OPEN_TAG_TOKEN` (`<`) | Opening `<` of a tag |
+| `CLOSE_TAG_TOKEN` (`>`) | Closing `>` of a tag |
+| `SLASH_TOKEN` (`/`) | Forward slash (self-closing or closing tag) |
+| `TAG_NAME_TOKEN` | Tag name (e.g., `div`, `MyComponent`) |
+| `PROP_NAME_TOKEN` | Attribute/property name |
+| `EQUALS_TOKEN` (`=`) | Equals sign in attributes |
+| `STRING_TOKEN` | Quoted attribute value (has `value`, `quote` fields) |
+| `TEXT_TOKEN` | Plain text content |
+| `EXPRESSION_TOKEN` | Interpolation expression (points to array index) |
+| `SPREAD_TOKEN` | Spread operator (`...`) |
+| `WHITESPACE_TOKEN` | Whitespace between tokens |
+| `COMMENT_START_TOKEN` | Start of comment (`//`, `/*`, `<!--`) |
+| `COMMENT_END_TOKEN` | End of comment (`\n`, `*/`, `-->`) |
+| `UNEXPECTED_CHARACTER_TOKEN` | Invalid character — emitted instead of throwing |
+
+### Token Structure
 
 Each token contains:
--   **`type`**: Numeric token type
+-   **`type`**: String token type identifier
 -   **`segment`**: Which string in the template literal (0, 1, 2...)
 -   **`start`**: Position within that segment
 -   **`end`**: End position within that segment
 -   **`value`**: For text/identifier tokens, the text content; for expression tokens, the expression index
+
+String tokens additionally contain:
+-   **`quote`**: The quote character used (`"` or `'`)
 
 ### `parse(tokens)`
 

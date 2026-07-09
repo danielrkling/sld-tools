@@ -37,24 +37,24 @@ import { createJsxTransformer, createTaggedTransformer } from "@tagged-jsx/trans
 import ts from "typescript";
 
 // Tagged template -> JSX
-const toJSX = createJsxTransformer(["html", "jsx"], ts);
-const jsxResult = toJSX.toJsx(`
+const toJsxWithMappings = createJsxTransformer(["html", "jsx"], ts);
+const jsxResult = toJsxWithMappings(`
   const el = html\`<div class=\${active}>hello</div>\`;
 `);
-// Result: const el = <div class={active}>hello</div>
+// Result: { code: `const el = <div class={active}>hello</div>`, mappings: {...}, errors: [] }
 
 // JSX -> Tagged template
-const toTagged = createTaggedTransformer("html", ts);
-const taggedResult = toTagged.toTagged(`
+const toTaggedWithMappings = createTaggedTransformer("html", ts);
+const taggedResult = toTaggedWithMappings(`
   const el = <div class={active}>hello</div>;
 `);
-// Result: const el = html`<div class=${active}>hello</div>`
+// Result: { code: `const el = html\`<div class=${active}>hello</div>\``, mappings: {...}, errors: [] }
 
 // SolidJS components are wrapped in expressions:
-const taggedResult2 = toTagged.toTagged(`
+const taggedResult2 = toTaggedWithMappings(`
   const el = <MyComponent prop={value}>{children}</MyComponent>;
 `);
-// Result: const el = html`<${MyComponent} prop=${value}>${children}</${MyComponent}>`
+// Result: { code: `const el = html\`<\${MyComponent} prop=\${value}>\${children}</\${MyComponent}>\``, mappings: {...}, errors: [] }
 ```
 
 ### With expression callbacks (SolidJS reactive expressions)
@@ -90,7 +90,7 @@ const toTagged = createTaggedTransformer("html", ts, callbacks);
 ### With source mappings (for diagnostic translation)
 
 ```typescript
-const { toJsxWithMappings } = createJsxTransformer(["jsx", "html"], ts);
+const toJsxWithMappings = createJsxTransformer(["jsx", "html"], ts);
 const { code, mappings } = toJsxWithMappings(sourceCode);
 
 // Map a position in the tagged source to the equivalent position in JSX
@@ -111,11 +111,14 @@ Creates a transformer that converts tagged template literals to JSX syntax.
 - `ts` — A TypeScript module instance
 - `callbacks?` — Optional `TransformerCallbacks` for custom expression handling
 
-**Returns:** `{ toJsx, toJsxWithMappings }`
+**Returns:** `(code: string) => { code: string; mappings: MappingResult; errors: TransformError[] }`
 
-**`toJsx(code)`** — Converts all tagged templates in `code` matching the configured tags into JSX syntax. Processes templates iteratively (up to 100 per file), handling nested cases.
+A single function that accepts source code and returns an object with:
+- `code` — The transformed code with all matching tagged templates converted to JSX
+- `mappings` — Character-level offset mappings between original and transformed code
+- `errors` — Array of transform errors (e.g., parse failures in template content)
 
-**`toJsxWithMappings(code)`** — Same as `toJsx` but also returns character-level source mappings.
+Processing is iterative (up to 100 passes per file), handling nested templates.
 
 ### `createTaggedTransformer(tag, ts, callbacks?)`
 
@@ -126,11 +129,14 @@ Creates a transformer that converts JSX syntax to tagged template literals.
 - `ts` — A TypeScript module instance
 - `callbacks?` — Optional `TransformerCallbacks` for custom expression handling
 
-**Returns:** `{ toTagged, toTaggedWithMappings }`
+**Returns:** `(code: string, callbacks?: TransformerCallbacks) => { code: string; mappings: MappingResult; errors: TransformError[] }`
 
-**`toTagged(code, callbacks?)`** — Converts all JSX elements in `code` to tagged template literals wrapping them in the configured tag. Accepts an optional per-invocation `callbacks` override. Component names (starting with uppercase) are wrapped in expressions: `<MyComponent />` → `` html`<${MyComponent} />` ``. This follows SolidJS conventions where the `html` tag expects component names as interpolations.
+A single function that accepts source code (and optional per-call callbacks override) and returns an object with:
+- `code` — The transformed code with all JSX elements converted to tagged template literals
+- `mappings` — Character-level offset mappings
+- `errors` — Array of transform errors
 
-**`toTaggedWithMappings(code, callbacks?)`** — Same as `toTagged` but also returns character-level source mappings.
+Component names (starting with uppercase) are wrapped in expressions: `<MyComponent />` → `` html`<${MyComponent} />` ``. This follows SolidJS conventions where the `html` tag expects component names as interpolations.
 
 ### `getJsxPosition(taggedPosition, mappings, jsxCodeLength)`
 
@@ -156,8 +162,9 @@ Computes forward and reverse character-level mappings between two strings using 
 4. **Parse** the tokens into an AST using `parse()`
 5. **Attach whitespace metadata** from template string segments to the AST via WeakMaps (preserves original spacing around attributes)
 6. **Render** the AST back to JSX text, calling `callbacks.toJSX()` for each expression encountered
-7. **Replace** the original tagged template text in the source
-8. **Repeat** until no more tagged templates remain
+7. **Wrap in parens** if the template is a direct child of `return`, `throw`, or `yield` to prevent automatic semicolon insertion (ASI)
+8. **Replace** the original tagged template text in the source
+9. **Repeat** until no more tagged templates remain
 
 ### `createTaggedTransformer` algorithm
 
@@ -265,6 +272,21 @@ JSX output:           <div>{name}</div>
 This is used by the TypeScript plugin to map diagnostic positions from the JSX output back to the original tagged template source, so error squiggles appear at the correct locations in your `html` template literals.
 
 The diff-based approach uses `diffChars` to compute fine-grained character differences, building both forward (tagged→JSX) and reverse (JSX→tagged) mappings.
+
+---
+
+## Comment handling
+
+HTML-style comments in tagged templates (`<!-- -->`) are converted to JSX comments (`{/* */}`) when going tagged → JSX, and back to HTML-style comments when going JSX → tagged:
+
+```
+Tagged:        html`<div><!-- comment --></div>`
+JSX:           <div>{/* comment */}</div>
+```
+
+Line comments (`//`) and block comments (`/* */`) within template content pass through verbatim in both directions — no wrapping is applied.
+
+This ensures that editor comments survive round-trip conversion without corruption.
 
 ---
 

@@ -6,13 +6,13 @@ No build step required — the plugin rewrites templates to JSX on the fly insid
 
 ## How it works
 
-The plugin hooks into the TypeScript language service by wrapping `getSemanticDiagnostics`. For each file the user opens or edits, it:
+The plugin hooks into the TypeScript language service by creating a proxy that intercepts language service calls. For each file the user opens or edits, it:
 
 1. **Finds** all tagged templates matching configured tags (e.g., `` html`...` ``)
 2. **Rewrites** each template to valid JSX using `@tagged-jsx/transform`
-3. **Creates** a synthetic TypeScript program with the rewritten source (using `ts.createProgram` with a custom compiler host)
-4. **Runs** the TypeScript compiler on the synthetic program to get diagnostics
-5. **Maps** diagnostic positions back to the original template literal positions using character-level offset mapping
+3. **Creates** a synthetic TypeScript language service with the rewritten source
+4. **Forwards** language service calls (diagnostics, completions, quick info, rename, etc.) to the synthetic service
+5. **Maps** all positions back to the original template literal positions using character-level offset mapping
 
 This means TypeScript's type checker sees:
 
@@ -110,11 +110,30 @@ The plugin uses the mapping system from `@tagged-jsx/transform` to translate pos
 
 This means error squiggles, hover info, and quick fixes all appear at the correct locations in your template literals.
 
+## Proxied language service methods
+
+The plugin proxies the following methods through the synthetic JSX language service, with automatic position remapping:
+
+| Method | Description |
+|--------|-------------|
+| `getSemanticDiagnostics` | Type errors, missing props, etc. mapped to original template positions |
+| `getCompletionsAtPosition` | JSX attribute and element name completions inside templates |
+| `getCompletionEntryDetails` | Detail info for completion entries |
+| `getQuickInfoAtPosition` | Hover type information |
+| `getSignatureHelpItems` | Signature help for JSX attributes |
+| `getOutliningSpans` | Code folding regions |
+| `getDefinitionAtPosition` | Go to definition |
+| `getImplementationAtPosition` | Go to implementation |
+| `getTypeDefinitionAtPosition` | Go to type definition |
+| `findReferences` | Find all references |
+| `getRenameInfo` / `findRenameLocations` | F2 rename support for components |
+| `getNavigationBarItems` | Document symbol outline |
+
 ## Limitations
 
-- The synthetic program created for diagnostics does not have access to the full project context (type resolution is limited to the single file being checked)
+- The synthetic language service does not have access to the full project context (type resolution is limited to the single file being checked)
 - Complex type dependencies across files may not resolve in synthetic diagnostics
-- The plugin currently only overrides `getSemanticDiagnostics` — syntactic diagnostics, completions, and quick info use the default language service
+- Completions match JSX fidelity — entries that do not originate from real JSX attribute positions are not included
 
 ## License
 
