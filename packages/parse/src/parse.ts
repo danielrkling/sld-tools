@@ -6,7 +6,8 @@ import {
   EqualsToken,
   EXPRESSION_TOKEN,
   ExpressionToken,
-  IDENTIFIER_TOKEN,
+  TAG_NAME_TOKEN,
+  PROP_NAME_TOKEN,
   OPEN_TAG_TOKEN,
   SLASH_TOKEN,
   SPREAD_TOKEN,
@@ -16,10 +17,12 @@ import {
   OpenTagToken,
   CloseTagToken,
   SlashToken,
-  IdentifierToken,
+  TagNameToken,
+  PropNameToken,
   TextToken,
   STRING_TOKEN,
   BaseToken,
+  WHITESPACE_TOKEN,
   COMMENT_END_TOKEN,
   COMMENT_START_TOKEN,
   CommentEndToken,
@@ -67,14 +70,14 @@ export interface ElementNode {
   tokens: {
     openTag: {
       open: OpenTagToken;
-      name: IdentifierToken;
+      name: TagNameToken;
       slash?: SlashToken;
       close: CloseTagToken;
     };
     closeTag?: {
       open: OpenTagToken;
       slash: SlashToken;
-      name: IdentifierToken;
+      name: TagNameToken;
       close: CloseTagToken;
     };
   };
@@ -111,7 +114,7 @@ export interface BooleanProp {
   type: typeof BOOLEAN_PROP;
   value: boolean;
   tokens: {
-    name: IdentifierToken;
+    name: PropNameToken;
   };
 }
 
@@ -120,7 +123,7 @@ export interface StringProp {
   type: typeof STRING_PROP;
   value: string;
   tokens: {
-    name: IdentifierToken;
+    name: PropNameToken;
     equals: EqualsToken;
     string: StringToken;
   };
@@ -131,7 +134,7 @@ export interface ExpressionProp {
   type: typeof EXPRESSION_PROP;
   value: number;
   tokens: {
-    name: IdentifierToken;
+    name: PropNameToken;
     equals: EqualsToken;
     expression: ExpressionToken;
   };
@@ -192,6 +195,10 @@ export const parse = (tokens: Token[], rawStrings?: string[]): RootNode => {
         continue;
       }
 
+      case WHITESPACE_TOKEN:
+        pos++;
+        continue;
+
       case EXPRESSION_TOKEN: {
         // --- EXPRESSION ---
         parent.children.push({
@@ -217,8 +224,8 @@ export const parse = (tokens: Token[], rawStrings?: string[]): RootNode => {
           if (
             stack.length > 1 &&
             closeToken?.type === CLOSE_TAG_TOKEN &&
-            ((nameToken?.type === IDENTIFIER_TOKEN &&
-              currentParent.name === nameToken.value) ||
+            ((nameToken?.type === TAG_NAME_TOKEN &&
+              currentParent.name === (nameToken as TagNameToken).value) ||
               ((nameToken?.type === EXPRESSION_TOKEN ||
                 nameToken.type === SLASH_TOKEN) &&
                 typeof currentParent.name === "number"))
@@ -232,7 +239,7 @@ export const parse = (tokens: Token[], rawStrings?: string[]): RootNode => {
 
         // Handle Opening Tag: <name ...>
         else if (
-          nextToken.type === IDENTIFIER_TOKEN ||
+          nextToken.type === TAG_NAME_TOKEN ||
           nextToken.type === EXPRESSION_TOKEN
         ) {
           const tagName = nextToken.value;
@@ -256,6 +263,10 @@ export const parse = (tokens: Token[], rawStrings?: string[]): RootNode => {
           // --- Attribute Parsing Loop ---
           while (pos < len) {
             const attrToken = tokens[pos];
+            if (attrToken.type === WHITESPACE_TOKEN) {
+              pos++;
+              continue;
+            }
             if (
               attrToken.type === CLOSE_TAG_TOKEN ||
               attrToken.type === SLASH_TOKEN
@@ -281,12 +292,12 @@ export const parse = (tokens: Token[], rawStrings?: string[]): RootNode => {
                   attrToken,
                 );
               }
-            } else if (attrToken.type === IDENTIFIER_TOKEN) {
+            } else if (attrToken.type === PROP_NAME_TOKEN) {
               const name = attrToken.value;
               const next = tokens[pos + 1];
 
               if (next?.type === EQUALS_TOKEN) {
-                const equalsToken = next; // Store reference to equals token
+                const equalsToken = next;
                 pos += 2; // Consume name and '='
                 const valToken = tokens[pos];
                 if (valToken.type === EXPRESSION_TOKEN) {
@@ -295,23 +306,21 @@ export const parse = (tokens: Token[], rawStrings?: string[]): RootNode => {
                     type: EXPRESSION_PROP,
                     value: valToken.value,
                     tokens: {
-                      name: attrToken,
+                      name: attrToken as PropNameToken,
                       equals: equalsToken,
                       expression: valToken,
                     },
                   });
                   pos++;
                 } else if (valToken.type === STRING_TOKEN) {
-                  const quote = valToken.value;
-                  const openQuote = valToken;
                   node.props.push({
                     name,
                     type: STRING_PROP,
-                    value: quote, // Remove quotes
+                    value: valToken.value,
                     tokens: {
-                      name: attrToken,
+                      name: attrToken as PropNameToken,
                       equals: equalsToken,
-                      string: openQuote,
+                      string: valToken,
                     },
                   });
                   pos++;
@@ -323,7 +332,7 @@ export const parse = (tokens: Token[], rawStrings?: string[]): RootNode => {
                   name,
                   value: true,
                   tokens: {
-                    name: attrToken,
+                    name: attrToken as PropNameToken,
                   },
                 });
                 pos++;

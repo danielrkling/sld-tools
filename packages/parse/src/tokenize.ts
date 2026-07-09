@@ -1,15 +1,17 @@
 import { ParseJSXError } from "./error";
+export const TEXT_TOKEN = "TEXT";
 export const OPEN_TAG_TOKEN = "<";
 export const CLOSE_TAG_TOKEN = ">";
 export const SLASH_TOKEN = "/";
-export const IDENTIFIER_TOKEN = "IDENTIFIER";
+export const TAG_NAME_TOKEN = "TAG_NAME";
+export const PROP_NAME_TOKEN = "PROP_NAME";
 export const EQUALS_TOKEN = "=";
 export const STRING_TOKEN = "STRING";
-export const TEXT_TOKEN = "TEXT";
-export const EXPRESSION_TOKEN = "EXPRESSION";
 export const SPREAD_TOKEN = "SPREAD";
-export const COMMENT_START_TOKEN = "<!--";
-export const COMMENT_END_TOKEN = "-->";
+export const EXPRESSION_TOKEN = "EXPRESSION";
+export const WHITESPACE_TOKEN = "WHITESPACE";
+export const COMMENT_START_TOKEN = "COMMENT_START";
+export const COMMENT_END_TOKEN = "COMMENT_END";
 
 const isIdentifierChar = (code: number): boolean => {
   return (
@@ -51,8 +53,13 @@ export interface SlashToken extends BaseToken {
   type: typeof SLASH_TOKEN;
 }
 
-export interface IdentifierToken extends BaseToken {
-  type: typeof IDENTIFIER_TOKEN;
+export interface TagNameToken extends BaseToken {
+  type: typeof TAG_NAME_TOKEN;
+  value: string;
+}
+
+export interface PropNameToken extends BaseToken {
+  type: typeof PROP_NAME_TOKEN;
   value: string;
 }
 
@@ -75,31 +82,51 @@ export interface SpreadToken extends BaseToken {
   type: typeof SPREAD_TOKEN;
 }
 
+export interface WhitespaceToken extends BaseToken {
+  type: typeof WHITESPACE_TOKEN;
+  value: string;
+}
+
 export interface ExpressionToken {
   type: typeof EXPRESSION_TOKEN;
   value: number;
 }
 
+export const TAG_COMMENT_START = "<!--";
+export const TAG_COMMENT_END = "-->";
+export const LINE_COMMENT_START = "//";
+export const LINE_COMMENT_END = "\n";
+export const BLOCK_COMMENT_START = "/*";
+export const BLOCK_COMMENT_END = "*/";
+
 export interface CommentStartToken extends BaseToken {
   type: typeof COMMENT_START_TOKEN;
-  value: "<!--" | "//" | "/*";
+  value:
+    | typeof TAG_COMMENT_START
+    | typeof LINE_COMMENT_START
+    | typeof BLOCK_COMMENT_START;
 }
 
 export interface CommentEndToken extends BaseToken {
   type: typeof COMMENT_END_TOKEN;
-  value: "-->" | "\n" | "*/";
+  value:
+    | typeof TAG_COMMENT_END
+    | typeof LINE_COMMENT_END
+    | typeof BLOCK_COMMENT_END;
 }
 
 export type Token =
   | OpenTagToken
   | CloseTagToken
   | SlashToken
-  | IdentifierToken
+  | TagNameToken
+  | PropNameToken
   | EqualsToken
   | StringToken
   | TextToken
   | ExpressionToken
   | SpreadToken
+  | WhitespaceToken
   | CommentStartToken
   | CommentEndToken;
 
@@ -112,11 +139,62 @@ const STATE_BLOCK_COMMENT = 4;
 export const tokenize = (strings: TemplateStringsArray | string[]): Token[] => {
   const tokens: Token[] = [];
   let state = STATE_TEXT;
+  let expectTagName = false;
 
   for (let i = 0; i < strings.length; i++) {
     const str = strings[i];
     const len = str.length;
     let cursor = 0;
+
+    const parseWhitespace = () => {
+      const wsStart = cursor;
+      while (cursor < len && isWhitespace(str.charCodeAt(cursor))) cursor++;
+      if (cursor > wsStart) {
+        tokens.push({
+          type: WHITESPACE_TOKEN,
+          value: str.slice(wsStart, cursor),
+          segment: i,
+          start: wsStart,
+          end: cursor,
+        });
+      }
+    };
+
+    const parseName = () => {
+      const start = cursor;
+      while (cursor < len && isIdentifierChar(str.charCodeAt(cursor))) cursor++;
+      const value = str.slice(start, cursor);
+      tokens.push({
+        type: expectTagName ? TAG_NAME_TOKEN : PROP_NAME_TOKEN,
+        value,
+        segment: i,
+        start,
+        end: cursor,
+      });
+      expectTagName = false;
+    };
+
+    const parseString = () => {
+      const char = str[cursor] as "'" | '"';
+      const endQuoteIndex = str.indexOf(char, cursor + 1);
+
+      if (endQuoteIndex === -1) {
+        throw new ParseJSXError(`Unterminated string`, {
+          segment: i,
+          start: cursor,
+          end: cursor + 1,
+        });
+      }
+      tokens.push({
+        type: STRING_TOKEN,
+        value: str.slice(cursor + 1, endQuoteIndex),
+        quote: char,
+        segment: i,
+        start: cursor,
+        end: endQuoteIndex + 1,
+      });
+      cursor = endQuoteIndex + 1;
+    };
 
     while (cursor < len) {
       switch (state) {
@@ -153,7 +231,7 @@ export const tokenize = (strings: TemplateStringsArray | string[]): Token[] => {
               cursor = nextTag + 4;
               tokens.push({
                 type: COMMENT_START_TOKEN,
-                value: "<!--",
+                value: TAG_COMMENT_START,
                 segment: i,
                 start: nextTag,
                 end: nextTag + 4,
@@ -166,17 +244,18 @@ export const tokenize = (strings: TemplateStringsArray | string[]): Token[] => {
                 end: nextTag + 1,
               });
               state = STATE_TAG;
+              expectTagName = true;
               cursor = nextTag + 1;
             }
           }
           break;
         }
         case STATE_TAG: {
+          parseWhitespace();
+          if (cursor >= len) break;
           const code = str.charCodeAt(cursor);
 
-          if (isWhitespace(code)) {
-            cursor++;
-          } else if (code === 62) {
+          if (code === 62) {
             state = STATE_TEXT;
             tokens.push({
               type: CLOSE_TAG_TOKEN,
@@ -201,7 +280,7 @@ export const tokenize = (strings: TemplateStringsArray | string[]): Token[] => {
               tokens.push({
                 type: COMMENT_START_TOKEN,
                 segment: i,
-                value: "//",
+                value: LINE_COMMENT_START,
                 start: cursor,
                 end: cursor + 2,
               });
@@ -214,7 +293,7 @@ export const tokenize = (strings: TemplateStringsArray | string[]): Token[] => {
               tokens.push({
                 type: COMMENT_START_TOKEN,
                 segment: i,
-                value: "/*",
+                value: BLOCK_COMMENT_START,
                 start: cursor,
                 end: cursor + 2,
               });
@@ -230,33 +309,9 @@ export const tokenize = (strings: TemplateStringsArray | string[]): Token[] => {
               cursor++;
             }
           } else if (code === 34 || code === 39) {
-            const char = str[cursor] as "'" | '"';
-            const endQuoteIndex = str.indexOf(char, cursor + 1);
-
-            if (endQuoteIndex === -1) {
-              throw new ParseJSXError(`Unterminated string`, { segment: i, start: cursor, end: cursor + 1 });
-            }
-            tokens.push({
-              type: STRING_TOKEN,
-              value: str.slice(cursor + 1, endQuoteIndex),
-              quote: char,
-              segment: i,
-              start: cursor,
-              end: endQuoteIndex + 1,
-            });
-            cursor = endQuoteIndex + 1;
+            parseString();
           } else if (isIdentifierStart(code)) {
-            const start = cursor;
-            while (cursor < len && isIdentifierChar(str.charCodeAt(cursor)))
-              cursor++;
-            const value = str.slice(start, cursor);
-            tokens.push({
-              type: IDENTIFIER_TOKEN,
-              value,
-              segment: i,
-              start,
-              end: cursor,
-            });
+            parseName();
           } else if (
             code === 46 &&
             str[cursor + 1] === "." &&
@@ -270,10 +325,11 @@ export const tokenize = (strings: TemplateStringsArray | string[]): Token[] => {
             });
             cursor += 3;
           } else {
-            throw new ParseJSXError(
-              `Unexpected character: '${str[cursor]}'`,
-              { segment: i, start: cursor, end: cursor + 1 },
-            );
+            throw new ParseJSXError(`Unexpected character: '${str[cursor]}'`, {
+              segment: i,
+              start: cursor,
+              end: cursor + 1,
+            });
           }
           break;
         }
@@ -325,6 +381,9 @@ export const tokenize = (strings: TemplateStringsArray | string[]): Token[] => {
     }
 
     if (i < strings.length - 1) {
+      if (state === STATE_TAG && expectTagName) {
+        expectTagName = false;
+      }
       tokens.push({
         type: EXPRESSION_TOKEN,
         value: i,

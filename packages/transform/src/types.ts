@@ -1,5 +1,5 @@
 import type * as ts from "typescript";
-import type { ExpressionProp, ExpressionNode } from "@tagged-jsx/parse";
+import type { ExpressionToken } from "@tagged-jsx/parse";
 
 export interface ToTaggedCallbackOptions {
   expression: ts.Expression;
@@ -12,7 +12,7 @@ export interface ToJsxCallbackOptions {
   expression: ts.Expression;
   propName?: string;
   propType: "attribute" | "child";
-  templateNode: ExpressionProp | ExpressionNode;
+  templateNode: ExpressionToken;
   sourceCode: string;
 }
 

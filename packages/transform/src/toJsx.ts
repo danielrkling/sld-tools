@@ -1,5 +1,20 @@
-import { tokenize, parse, RootNode, ParseJSXError } from "@tagged-jsx/parse";
-import { attachWhitespaceInfo, getPropWhitespaceBefore, getElementWhitespaceBeforeFirstProp, getElementWhitespaceAfterLastProp } from "./attachWhitespace";
+import {
+  tokenize,
+  WHITESPACE_TOKEN,
+  OPEN_TAG_TOKEN,
+  CLOSE_TAG_TOKEN,
+  SLASH_TOKEN,
+  TAG_NAME_TOKEN,
+  PROP_NAME_TOKEN,
+  EQUALS_TOKEN,
+  QUOTED_STRING_TOKEN as STRING_TOKEN,
+  TEXT_TOKEN,
+  EXPRESSION_TOKEN,
+  SPREAD_TOKEN,
+  COMMENT_START_TOKEN,
+  COMMENT_END_TOKEN,
+  type Token,
+} from "@tagged-jsx/parse";
 import { computeMappings } from "./mappings";
 import type { MappingResult } from "./mappings";
 import type * as tsModule from "typescript";
@@ -23,32 +38,118 @@ export function createJsxTransformer(
     return ts.forEachChild(node, findFirstTaggedTemplate);
   }
 
-  function getSegmentSourcePos(
-    template: tsModule.TaggedTemplateExpression,
-    segment: number,
-    startOffset: number,
-    endOffset: number,
-  ): { start: number; end: number } | undefined {
-    const basePos = (seg: number): number | undefined => {
-      const temp = template.template;
-      if (ts.isNoSubstitutionTemplateLiteral(temp)) {
-        return temp.getStart() + 1;
+  function tokensToJsx(
+    tokens: Token[],
+    expressions: tsModule.Expression[],
+    sourceCode: string,
+  ): string {
+    let result = "";
+    let depth = 0;
+    let rootItems = 0;
+    let tagHadSlash = false;
+
+    for (let i = 0; i < tokens.length; i++) {
+      const token = tokens[i];
+
+      switch (token.type) {
+        case OPEN_TAG_TOKEN: {
+          const nextToken = tokens[i + 1];
+          if (nextToken?.type !== SLASH_TOKEN) {
+            if (depth === 0) rootItems++;
+            depth++;
+          }
+          result += "<";
+          tagHadSlash = false;
+          break;
+        }
+        case CLOSE_TAG_TOKEN:
+          if (tagHadSlash && depth > 0) depth--;
+          tagHadSlash = false;
+          result += ">";
+          break;
+        case SLASH_TOKEN:
+          tagHadSlash = true;
+          result += "/";
+          break;
+        case TAG_NAME_TOKEN:
+        case PROP_NAME_TOKEN:
+          result += token.value;
+          break;
+        case EQUALS_TOKEN:
+          result += "=";
+          break;
+        case STRING_TOKEN:
+          result += token.quote + token.value + token.quote;
+          break;
+        case TEXT_TOKEN:
+          if (depth === 0 && token.value.trim()) rootItems++;
+          result += token.value;
+          break;
+        case WHITESPACE_TOKEN:
+          result += token.value;
+          break;
+        case SPREAD_TOKEN: {
+          const nextToken = tokens[i + 1];
+          if (nextToken?.type === EXPRESSION_TOKEN) {
+            const expr = expressions[nextToken.value];
+            result += `{...${expr?.getText() ?? "/* error */"}}`;
+            i++;
+          }
+          break;
+        }
+        case EXPRESSION_TOKEN: {
+          const prevToken = tokens[i - 1];
+          if (prevToken?.type === SPREAD_TOKEN) break;
+          const expr = expressions[token.value];
+          const isTagName = prevToken?.type === OPEN_TAG_TOKEN || prevToken?.type === SLASH_TOKEN;
+          const isPropValue = prevToken?.type === EQUALS_TOKEN;
+          let prevProp: string | undefined;
+          if (isPropValue) {
+            const propToken = tokens[i - 2];
+            if (propToken?.type === PROP_NAME_TOKEN) {
+              prevProp = propToken.value;
+            }
+          }
+          let exprText = expr?.getText() ?? "/* error */";
+          if (!isTagName && callbacks?.toJSX) {
+            try {
+              exprText = callbacks.toJSX({
+                expression: expr!,
+                propName: prevProp,
+                propType: prevProp ? "attribute" : "child",
+                templateNode: token,
+                sourceCode,
+              });
+            } catch {
+              exprText = expr?.getText() ?? "/* error */";
+            }
+          }
+          if (isTagName) {
+            result += exprText;
+          } else {
+            result += `{${exprText}}`;
+          }
+          break;
+        }
+        case COMMENT_START_TOKEN:
+          result += "{/*";
+          break;
+        case COMMENT_END_TOKEN:
+          result += "*/}";
+          break;
       }
-      if (seg === 0) {
-        return temp.head.getStart() + 1;
-      }
-      const spanIndex = seg - 1;
-      if (spanIndex < temp.templateSpans.length) {
-        return temp.templateSpans[spanIndex].literal.getStart();
-      }
-      return undefined;
-    };
-    const base = basePos(segment);
-    if (base === undefined) return undefined;
-    return { start: base + startOffset, end: base + endOffset };
+    }
+
+    if (result === "") {
+      return "<></>";
+    }
+    if (rootItems > 1) {
+      return `<>${result}</>`;
+    }
+    return result;
   }
 
-  function toJsx(code: string, errors?: TransformError[]): string {
+  function toJsx(code: string): string {
     let result = code;
     let iterations = 0;
     const maxIterations = 100;
@@ -90,32 +191,8 @@ export function createJsxTransformer(
         );
       }
 
-      let jsxCode: string;
-      try {
-        const tokens = tokenize(strings as unknown as TemplateStringsArray);
-        const parsed = parse(tokens) as RootNode;
-        jsxCode = printJsxFromAST(parsed, expressions, strings, result);
-      } catch(e: unknown) {
-        const msg = (e as Error).message;
-        console.error('Error in tokenize/parse:', msg);
-        if (errors) {
-          let errStart = template.template.getStart() + 1;
-          let errEnd = template.template.getEnd() - 1;
-          if (e instanceof ParseJSXError && e.token) {
-            const sourcePos = getSegmentSourcePos(template, e.token.segment, e.token.start, e.token.end);
-            if (sourcePos !== undefined) {
-              errStart = sourcePos.start;
-              errEnd = sourcePos.end;
-            }
-          }
-          errors.push({
-            start: errStart,
-            end: errEnd,
-            message: msg,
-          });
-        }
-        jsxCode = "true";
-      }
+      const tokens = tokenize(strings as unknown as TemplateStringsArray);
+      const jsxCode = tokensToJsx(tokens, expressions, result);
 
       result =
         result.slice(0, template.getStart()) +
@@ -128,172 +205,9 @@ export function createJsxTransformer(
 
   function toJsxWithMappings(code: string): { code: string; mappings: MappingResult; errors: TransformError[] } {
     const errors: TransformError[] = [];
-    const codeResult = toJsx(code, errors);
+    const codeResult = toJsx(code);
     const mappings = computeMappings(code, codeResult);
     return { code: codeResult, mappings, errors };
-  }
-
-    function printJsxFromAST(
-      parsed: RootNode,
-      expressions: tsModule.Expression[],
-      strings: string[],
-      sourceCode: string,
-    ): string {
-      try {
-        if (!parsed.children || parsed.children.length === 0) {
-        return "<></>";
-      }
-
-    attachWhitespaceInfo(parsed, strings, expressions);
-
-    const children = parsed.children;
-
-    if (children.length === 0) {
-      return "";
-    }
-
-    if (children.length === 1 && children[0].type === "ELEMENT") {
-      return printJsxElement(children[0], expressions, strings, sourceCode);
-    }
-
-    let jsx = "";
-    for (const child of children) {
-      if (child.type === "TEXT") {
-        jsx += child.value;
-      } else if (child.type === "ELEMENT") {
-        jsx += printJsxElement(child, expressions, strings, sourceCode);
-      } else if (child.type === "EXPRESSION") {
-        const expr = expressions[child.value as number];
-        if (expr) {
-          jsx += `{${expr.getText()}}`;
-        }
-      }
-    }
-    return `<>${jsx}</>`;
-      } catch(e: unknown) {
-        console.error('Error in printJsxFromAST:', (e as Error).message);
-        throw e;
-      }
-    }
-
-    function printJsxElement(
-      element: any,
-      expressions: tsModule.Expression[],
-      strings: string[],
-      sourceCode: string,
-    ): string {
-      let name = element.name;
-
-    if (typeof name === "number") {
-      const expr = expressions[name];
-      if (!expr) {
-        console.error('expression not found at index', name, 'expressions length:', expressions.length);
-        return '<!-- error: expression not found -->';
-      }
-      name = expr.getText();
-    }
-
-      const children = element.children || [];
-      const props = element.props || [];
-
-    const isSelfClosing = element.tokens?.openTag?.slash !== undefined;
-
-    let attrs = "";
-
-    for (let i = 0; i < props.length; i++) {
-      const prop = props[i];
-      const propName = prop.name;
-      const propValue = prop.value;
-      const propType = prop.type;
-
-      let whitespace = " ";
-      if (i === 0) {
-        whitespace = getElementWhitespaceBeforeFirstProp(element) || " ";
-      } else {
-        whitespace = getPropWhitespaceBefore(prop) || " ";
-      }
-
-      if (propType === "BOOLEAN") {
-        attrs += `${whitespace}${propName}`;
-      } else if (propType === "STRING") {
-        attrs += `${whitespace}${propName}="${propValue}"`;
-      } else if (propType === "EXPRESSION" && propValue !== undefined) {
-        const expr = expressions[propValue as number];
-        if (!expr) {
-          console.error('Expression not found at index', propValue, 'expressions length:', expressions.length);
-          attrs += `${whitespace}${propName}={/* error: expression not found */}`;
-          continue;
-        }
-        let exprText = expr.getText();
-        if (callbacks?.toJSX) {
-          try {
-            exprText = callbacks.toJSX({
-              expression: expr,
-              propName,
-              propType: "attribute",
-              templateNode: prop,
-              sourceCode,
-            });
-          } catch (e) {
-            console.error('Error in toJSX callback:', e);
-            exprText = expr.getText();
-          }
-        }
-        attrs += `${whitespace}${propName}={${exprText}}`;
-      } else if (propType === "SPREAD" && propValue !== undefined) {
-        const expr = expressions[propValue];
-        const exprText = expr.getText();
-        attrs += `${whitespace}{...${exprText}}`;
-      }
-    }
-
-    if (props.length > 0) {
-      const afterLast = getElementWhitespaceAfterLastProp(element) || "";
-      attrs += afterLast;
-    }
-
-    let childrenStr = "";
-    for (const child of children) {
-      if (child.type === "ELEMENT") {
-        childrenStr += printJsxElement(child, expressions, strings, sourceCode);
-      } else if (child.type === "TEXT") {
-        childrenStr += child.value;
-      } else if (child.type === "EXPRESSION" && child.value !== undefined) {
-        const expr = expressions[child.value as number];
-        if (!expr) {
-          console.error('Expression not found at index', child.value, 'expressions length:', expressions.length);
-          childrenStr += `{/* error: expression not found */}`;
-          continue;
-        }
-        let exprText = expr.getText();
-        if (callbacks?.toJSX) {
-          try {
-            exprText = callbacks.toJSX({
-              expression: expr,
-              propType: "child",
-              templateNode: child,
-              sourceCode,
-            });
-          } catch (e) {
-            console.error('Error in toJSX callback:', e);
-            exprText = expr.getText();
-          }
-        }
-        childrenStr += `{${exprText}}`;
-      }
-    }
-
-    if (isSelfClosing) {
-      if (attrs) {
-        return `<${name}${attrs}/>`;
-      } else {
-        return `<${name} />`;
-      }
-    } else if (childrenStr) {
-      return `<${name}${attrs}>${childrenStr}</${name}>`;
-    } else {
-      return `<${name}${attrs}></${name}>`;
-    }
   }
 
   return { toJsx, toJsxWithMappings };

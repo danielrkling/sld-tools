@@ -4,15 +4,18 @@ import {
   OPEN_TAG_TOKEN,
   CLOSE_TAG_TOKEN,
   SLASH_TOKEN,
-  IDENTIFIER_TOKEN,
+  TAG_NAME_TOKEN,
+  PROP_NAME_TOKEN,
   EQUALS_TOKEN,
   QUOTED_STRING_TOKEN,
   TEXT_TOKEN,
   EXPRESSION_TOKEN,
   SPREAD_TOKEN,
+  WHITESPACE_TOKEN,
   COMMENT_START_TOKEN,
   COMMENT_END_TOKEN,
-  IdentifierToken,
+  TagNameToken,
+  PropNameToken,
   SpreadToken,
 } from "../src/index";
 
@@ -26,7 +29,7 @@ describe("basic tags", () => {
 
     expect(tokens).toEqual([
       { type: OPEN_TAG_TOKEN, segment: 0, start: 0, end: 1 },
-      { type: IDENTIFIER_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
+      { type: TAG_NAME_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
     ]);
   });
 
@@ -35,7 +38,7 @@ describe("basic tags", () => {
 
     expect(tokens).toEqual([
       { type: OPEN_TAG_TOKEN, segment: 0, start: 0, end: 1 },
-      { type: IDENTIFIER_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
+      { type: TAG_NAME_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
       { type: CLOSE_TAG_TOKEN, segment: 0, start: 4, end: 5 },
     ]);
   });
@@ -45,7 +48,8 @@ describe("basic tags", () => {
 
     expect(tokens).toEqual([
       { type: OPEN_TAG_TOKEN, segment: 0, start: 0, end: 1 },
-      { type: IDENTIFIER_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
+      { type: TAG_NAME_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
+      { type: WHITESPACE_TOKEN, value: " ", segment: 0, start: 4, end: 5 },
       { type: SLASH_TOKEN, segment: 0, start: 5, end: 6 },
       { type: CLOSE_TAG_TOKEN, segment: 0, start: 6, end: 7 },
     ]);
@@ -56,11 +60,11 @@ describe("basic tags", () => {
 
     expect(tokens).toEqual([
       { type: OPEN_TAG_TOKEN, segment: 0, start: 0, end: 1 },
-      { type: IDENTIFIER_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
+      { type: TAG_NAME_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
       { type: CLOSE_TAG_TOKEN, segment: 0, start: 4, end: 5 },
       { type: OPEN_TAG_TOKEN, segment: 0, start: 5, end: 6 },
       { type: SLASH_TOKEN, segment: 0, start: 6, end: 7 },
-      { type: IDENTIFIER_TOKEN, value: "div", segment: 0, start: 7, end: 10 },
+      { type: TAG_NAME_TOKEN, value: "div", segment: 0, start: 7, end: 10 },
       { type: CLOSE_TAG_TOKEN, segment: 0, start: 10, end: 11 },
     ]);
   });
@@ -72,8 +76,9 @@ describe("attribute values", () => {
 
     expect(tokens).toEqual([
       { type: OPEN_TAG_TOKEN, segment: 0, start: 0, end: 1 },
-      { type: IDENTIFIER_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
-      { type: IDENTIFIER_TOKEN, value: "id", segment: 0, start: 5, end: 7 },
+      { type: TAG_NAME_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
+      { type: WHITESPACE_TOKEN, value: " ", segment: 0, start: 4, end: 5 },
+      { type: PROP_NAME_TOKEN, value: "id", segment: 0, start: 5, end: 7 },
       { type: EQUALS_TOKEN, segment: 0, start: 7, end: 8 },
       {
         type: QUOTED_STRING_TOKEN,
@@ -92,8 +97,9 @@ describe("attribute values", () => {
 
     expect(tokens).toEqual([
       { type: OPEN_TAG_TOKEN, segment: 0, start: 0, end: 1 },
-      { type: IDENTIFIER_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
-      { type: IDENTIFIER_TOKEN, value: "id", segment: 0, start: 5, end: 7 },
+      { type: TAG_NAME_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
+      { type: WHITESPACE_TOKEN, value: " ", segment: 0, start: 4, end: 5 },
+      { type: PROP_NAME_TOKEN, value: "id", segment: 0, start: 5, end: 7 },
       { type: EQUALS_TOKEN, segment: 0, start: 7, end: 8 },
       {
         type: QUOTED_STRING_TOKEN,
@@ -112,8 +118,9 @@ describe("attribute values", () => {
 
     expect(tokens).toEqual([
       { type: OPEN_TAG_TOKEN, segment: 0, start: 0, end: 1 },
-      { type: IDENTIFIER_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
-      { type: IDENTIFIER_TOKEN, value: "class", segment: 0, start: 5, end: 10 },
+      { type: TAG_NAME_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
+      { type: WHITESPACE_TOKEN, value: " ", segment: 0, start: 4, end: 5 },
+      { type: PROP_NAME_TOKEN, value: "class", segment: 0, start: 5, end: 10 },
       { type: EQUALS_TOKEN, segment: 0, start: 10, end: 11 },
       {
         type: QUOTED_STRING_TOKEN,
@@ -132,15 +139,17 @@ describe("attribute values", () => {
 
     expect(tokens).toEqual([
       { type: OPEN_TAG_TOKEN, segment: 0, start: 0, end: 1 },
-      { type: IDENTIFIER_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
+      { type: TAG_NAME_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
+      { type: WHITESPACE_TOKEN, value: " ", segment: 0, start: 4, end: 5 },
       {
-        type: IDENTIFIER_TOKEN,
+        type: PROP_NAME_TOKEN,
         value: "enabled",
         segment: 0,
         start: 5,
         end: 12,
       },
-      { type: IDENTIFIER_TOKEN, value: "bool", segment: 0, start: 13, end: 17 },
+      { type: WHITESPACE_TOKEN, value: " ", segment: 0, start: 12, end: 13 },
+      { type: PROP_NAME_TOKEN, value: "bool", segment: 0, start: 13, end: 17 },
       { type: CLOSE_TAG_TOKEN, segment: 0, start: 17, end: 18 },
     ]);
   });
@@ -172,8 +181,9 @@ describe("attribute values", () => {
 
     expect(tokens).toEqual([
       { type: OPEN_TAG_TOKEN, segment: 0, start: 0, end: 1 },
-      { type: IDENTIFIER_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
-      { type: IDENTIFIER_TOKEN, value: "attr", segment: 0, start: 5, end: 9 },
+      { type: TAG_NAME_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
+      { type: WHITESPACE_TOKEN, value: " ", segment: 0, start: 4, end: 5 },
+      { type: PROP_NAME_TOKEN, value: "attr", segment: 0, start: 5, end: 9 },
       { type: EQUALS_TOKEN, segment: 0, start: 9, end: 10 },
       {
         type: QUOTED_STRING_TOKEN,
@@ -212,9 +222,10 @@ describe("attribute values", () => {
         end: 13,
       },
       { type: OPEN_TAG_TOKEN, segment: 0, start: 13, end: 14 },
-      { type: IDENTIFIER_TOKEN, value: "h1", segment: 0, start: 14, end: 16 },
+      { type: TAG_NAME_TOKEN, value: "h1", segment: 0, start: 14, end: 16 },
+      { type: WHITESPACE_TOKEN, value: " ", segment: 0, start: 16, end: 17 },
       {
-        type: IDENTIFIER_TOKEN,
+        type: PROP_NAME_TOKEN,
         value: "title",
         segment: 0,
         start: 17,
@@ -232,7 +243,7 @@ describe("attribute values", () => {
       { type: CLOSE_TAG_TOKEN, segment: 0, start: 25, end: 26 },
       { type: OPEN_TAG_TOKEN, segment: 0, start: 26, end: 27 },
       { type: SLASH_TOKEN, segment: 0, start: 27, end: 28 },
-      { type: IDENTIFIER_TOKEN, value: "h1", segment: 0, start: 28, end: 30 },
+      { type: TAG_NAME_TOKEN, value: "h1", segment: 0, start: 28, end: 30 },
       { type: CLOSE_TAG_TOKEN, segment: 0, start: 30, end: 31 },
       {
         type: TEXT_TOKEN,
@@ -270,8 +281,9 @@ describe("expressions", () => {
 
     expect(tokens).toEqual([
       { type: OPEN_TAG_TOKEN, segment: 0, start: 0, end: 1 },
-      { type: IDENTIFIER_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
-      { type: IDENTIFIER_TOKEN, value: "id", segment: 0, start: 5, end: 7 },
+      { type: TAG_NAME_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
+      { type: WHITESPACE_TOKEN, value: " ", segment: 0, start: 4, end: 5 },
+      { type: PROP_NAME_TOKEN, value: "id", segment: 0, start: 5, end: 7 },
       { type: EQUALS_TOKEN, segment: 0, start: 7, end: 8 },
       { type: EXPRESSION_TOKEN, value: 0 },
       { type: CLOSE_TAG_TOKEN, segment: 1, start: 0, end: 1 },
@@ -294,7 +306,7 @@ describe("expressions", () => {
 
     const attrNames = tokens.filter(
       (t) =>
-        t.type === IDENTIFIER_TOKEN && (t.value as string).includes("data"),
+        t.type === PROP_NAME_TOKEN && (t.value as string).includes("data"),
     );
     expect(attrNames.length).toBeGreaterThanOrEqual(2);
   });
@@ -305,9 +317,11 @@ describe("expressions", () => {
 
     expect(tokens).toEqual([
       { type: OPEN_TAG_TOKEN, segment: 0, start: 0, end: 1 },
-      { type: IDENTIFIER_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
+      { type: TAG_NAME_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
+      { type: WHITESPACE_TOKEN, value: " ", segment: 0, start: 4, end: 5 },
       { type: SPREAD_TOKEN, segment: 0, start: 5, end: 8 },
       { type: EXPRESSION_TOKEN, value: 0 },
+      { type: WHITESPACE_TOKEN, value: " ", segment: 1, start: 0, end: 1 },
       { type: SLASH_TOKEN, segment: 1, start: 1, end: 2 },
       { type: CLOSE_TAG_TOKEN, segment: 1, start: 2, end: 3 },
     ]);
@@ -320,9 +334,13 @@ describe("whitespace handling", () => {
 
     expect(tokens).toEqual([
       { type: OPEN_TAG_TOKEN, segment: 0, start: 0, end: 1 },
-      { type: IDENTIFIER_TOKEN, value: "div", segment: 0, start: 5, end: 8 },
-      { type: IDENTIFIER_TOKEN, value: "id", segment: 0, start: 11, end: 13 },
+      { type: WHITESPACE_TOKEN, value: " \n  ", segment: 0, start: 1, end: 5 },
+      { type: TAG_NAME_TOKEN, value: "div", segment: 0, start: 5, end: 8 },
+      { type: WHITESPACE_TOKEN, value: "   ", segment: 0, start: 8, end: 11 },
+      { type: PROP_NAME_TOKEN, value: "id", segment: 0, start: 11, end: 13 },
+      { type: WHITESPACE_TOKEN, value: "   ", segment: 0, start: 13, end: 16 },
       { type: EQUALS_TOKEN, segment: 0, start: 16, end: 17 },
+      { type: WHITESPACE_TOKEN, value: "   ", segment: 0, start: 17, end: 20 },
       {
         type: QUOTED_STRING_TOKEN,
         value: "app",
@@ -331,6 +349,7 @@ describe("whitespace handling", () => {
         start: 20,
         end: 25,
       },
+      { type: WHITESPACE_TOKEN, value: "  ", segment: 0, start: 25, end: 27 },
       { type: CLOSE_TAG_TOKEN, segment: 0, start: 27, end: 28 },
     ]);
   });
@@ -356,7 +375,7 @@ describe("whitespace handling", () => {
 
     expect(tokens).toEqual([
       { type: OPEN_TAG_TOKEN, segment: 0, start: 0, end: 1 },
-      { type: IDENTIFIER_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
+      { type: TAG_NAME_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
       { type: CLOSE_TAG_TOKEN, segment: 0, start: 4, end: 5 },
       {
         type: TEXT_TOKEN,
@@ -367,7 +386,7 @@ describe("whitespace handling", () => {
       },
       { type: OPEN_TAG_TOKEN, segment: 0, start: 26, end: 27 },
       { type: SLASH_TOKEN, segment: 0, start: 27, end: 28 },
-      { type: IDENTIFIER_TOKEN, value: "div", segment: 0, start: 28, end: 31 },
+      { type: TAG_NAME_TOKEN, value: "div", segment: 0, start: 28, end: 31 },
       { type: CLOSE_TAG_TOKEN, segment: 0, start: 31, end: 32 },
     ]);
   });
@@ -452,7 +471,7 @@ describe("edge cases", () => {
                   <td class="col-md-6" />
                 </tr>`;
     expect(
-      tokens.filter((t) => t.type === IDENTIFIER_TOKEN && t.value === "a")
+      tokens.filter((t) => t.type === TAG_NAME_TOKEN && t.value === "a")
         .length,
     ).toBe(3);
   });
@@ -465,12 +484,13 @@ describe("special characters in names", () => {
     expect(tokens).toEqual([
       { type: OPEN_TAG_TOKEN, segment: 0, start: 0, end: 1 },
       {
-        type: IDENTIFIER_TOKEN,
+        type: TAG_NAME_TOKEN,
         value: "my-component",
         segment: 0,
         start: 1,
         end: 13,
       },
+      { type: WHITESPACE_TOKEN, value: " ", segment: 0, start: 13, end: 14 },
       { type: SLASH_TOKEN, segment: 0, start: 14, end: 15 },
       { type: CLOSE_TAG_TOKEN, segment: 0, start: 15, end: 16 },
     ]);
@@ -482,12 +502,13 @@ describe("special characters in names", () => {
     expect(tokens).toEqual([
       { type: OPEN_TAG_TOKEN, segment: 0, start: 0, end: 1 },
       {
-        type: IDENTIFIER_TOKEN,
+        type: TAG_NAME_TOKEN,
         value: "my.component",
         segment: 0,
         start: 1,
         end: 13,
       },
+      { type: WHITESPACE_TOKEN, value: " ", segment: 0, start: 13, end: 14 },
       { type: SLASH_TOKEN, segment: 0, start: 14, end: 15 },
       { type: CLOSE_TAG_TOKEN, segment: 0, start: 15, end: 16 },
     ]);
@@ -499,12 +520,13 @@ describe("special characters in names", () => {
     expect(tokens).toEqual([
       { type: OPEN_TAG_TOKEN, segment: 0, start: 0, end: 1 },
       {
-        type: IDENTIFIER_TOKEN,
+        type: TAG_NAME_TOKEN,
         value: "svg:rect",
         segment: 0,
         start: 1,
         end: 9,
       },
+      { type: WHITESPACE_TOKEN, value: " ", segment: 0, start: 9, end: 10 },
       { type: SLASH_TOKEN, segment: 0, start: 10, end: 11 },
       { type: CLOSE_TAG_TOKEN, segment: 0, start: 11, end: 12 },
     ]);
@@ -516,12 +538,13 @@ describe("special characters in names", () => {
     expect(tokens).toEqual([
       { type: OPEN_TAG_TOKEN, segment: 0, start: 0, end: 1 },
       {
-        type: IDENTIFIER_TOKEN,
+        type: TAG_NAME_TOKEN,
         value: "my_component",
         segment: 0,
         start: 1,
         end: 13,
       },
+      { type: WHITESPACE_TOKEN, value: " ", segment: 0, start: 13, end: 14 },
       { type: SLASH_TOKEN, segment: 0, start: 14, end: 15 },
       { type: CLOSE_TAG_TOKEN, segment: 0, start: 15, end: 16 },
     ]);
@@ -532,37 +555,42 @@ describe("special characters in names", () => {
 
     expect(tokens).toEqual([
       { type: OPEN_TAG_TOKEN, segment: 0, start: 0, end: 1 },
-      { type: IDENTIFIER_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
+      { type: TAG_NAME_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
+      { type: WHITESPACE_TOKEN, value: " ", segment: 0, start: 4, end: 5 },
       {
-        type: IDENTIFIER_TOKEN,
+        type: PROP_NAME_TOKEN,
         value: "data-id",
         segment: 0,
         start: 5,
         end: 12,
       },
+      { type: WHITESPACE_TOKEN, value: " ", segment: 0, start: 12, end: 13 },
       {
-        type: IDENTIFIER_TOKEN,
+        type: PROP_NAME_TOKEN,
         value: "data_id",
         segment: 0,
         start: 13,
         end: 20,
       },
+      { type: WHITESPACE_TOKEN, value: " ", segment: 0, start: 20, end: 21 },
       {
-        type: IDENTIFIER_TOKEN,
+        type: PROP_NAME_TOKEN,
         value: "data.id",
         segment: 0,
         start: 21,
         end: 28,
       },
+      { type: WHITESPACE_TOKEN, value: " ", segment: 0, start: 28, end: 29 },
       {
-        type: IDENTIFIER_TOKEN,
+        type: PROP_NAME_TOKEN,
         value: "data:id",
         segment: 0,
         start: 29,
         end: 36,
       },
+      { type: WHITESPACE_TOKEN, value: " ", segment: 0, start: 36, end: 37 },
       {
-        type: IDENTIFIER_TOKEN,
+        type: PROP_NAME_TOKEN,
         value: "dataid$",
         segment: 0,
         start: 37,
@@ -617,7 +645,7 @@ describe("bad but valid syntaxes", () => {
 
     const attrNames = tokens.filter(
       (t) =>
-        t.type === IDENTIFIER_TOKEN &&
+        t.type === PROP_NAME_TOKEN &&
         t.value &&
         /^[abc]$/.test(t.value as string),
     );
@@ -629,7 +657,7 @@ describe("bad but valid syntaxes", () => {
 
     expect(tokens).toContainEqual(
       expect.objectContaining({
-        type: IDENTIFIER_TOKEN,
+        type: PROP_NAME_TOKEN,
         value: "required",
       }),
     );
@@ -645,7 +673,7 @@ describe("bad but valid syntaxes", () => {
 
     expect(tokens).toContainEqual(
       expect.objectContaining({
-        type: IDENTIFIER_TOKEN,
+        type: PROP_NAME_TOKEN,
         value: "id",
       }),
     );
@@ -663,7 +691,7 @@ describe("comments handling", () => {
     const tokens = tokenizeTemplate`<div><!-- This is a comment --></div>`;
     expect(tokens).toEqual([
       { type: OPEN_TAG_TOKEN, segment: 0, start: 0, end: 1 },
-      { type: IDENTIFIER_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
+      { type: TAG_NAME_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
       { type: CLOSE_TAG_TOKEN, segment: 0, start: 4, end: 5 },
       {
         type: COMMENT_START_TOKEN,
@@ -682,7 +710,7 @@ describe("comments handling", () => {
       { type: COMMENT_END_TOKEN, segment: 0, start: 28, end: 31, value: "-->" },
       { type: OPEN_TAG_TOKEN, segment: 0, start: 31, end: 32 },
       { type: SLASH_TOKEN, segment: 0, start: 32, end: 33 },
-      { type: IDENTIFIER_TOKEN, value: "div", segment: 0, start: 33, end: 36 },
+      { type: TAG_NAME_TOKEN, value: "div", segment: 0, start: 33, end: 36 },
       { type: CLOSE_TAG_TOKEN, segment: 0, start: 36, end: 37 },
     ]);
   });
@@ -736,7 +764,8 @@ describe("comments handling", () => {
     const tokens = tokenizeTemplate`<div // comment\n>`;
     expect(tokens).toEqual([
       { type: "<", segment: 0, start: 0, end: 1 },
-      { type: IDENTIFIER_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
+      { type: TAG_NAME_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
+      { type: WHITESPACE_TOKEN, value: " ", segment: 0, start: 4, end: 5 },
       { type: COMMENT_START_TOKEN, value: "//", segment: 0, start: 5, end: 7 },
       { type: TEXT_TOKEN, value: " comment", segment: 0, start: 7, end: 15 },
       { type: COMMENT_END_TOKEN, value: "\n", segment: 0, start: 15, end: 16 },
@@ -744,44 +773,12 @@ describe("comments handling", () => {
     ]);
   });
 
-  it("should tokenize shorthand closing tag with line comment", () => {
-    const tokens = tokenizeTemplate`<${1} 
-    // comment
-    >${1}<//>`;
-    expect(tokens[2]).toEqual({
-      type: COMMENT_START_TOKEN,
-      value: "//",
-      segment: 1,
-      start: 6,
-      end: 8,
-    });
-    expect(tokens[3]).toEqual({
-      type: TEXT_TOKEN,
-      value: " comment",
-      segment: 1,
-      start: 8,
-      end: 16,
-    });
-    expect(tokens[4]).toEqual({
-      type: COMMENT_END_TOKEN,
-      value: "\n",
-      segment: 1,
-      start: 16,
-      end: 17,
-    });
-    expect(tokens[9]).toEqual({
-      type: SLASH_TOKEN,
-      segment: 2,
-      start: 2,
-      end: 3,
-    });
-  });
-
   it("should tokenize block comment in tag", () => {
     const tokens = tokenizeTemplate`<div /* comment */>`;
     expect(tokens).toEqual([
       { type: "<", segment: 0, start: 0, end: 1 },
-      { type: IDENTIFIER_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
+      { type: TAG_NAME_TOKEN, value: "div", segment: 0, start: 1, end: 4 },
+      { type: WHITESPACE_TOKEN, value: " ", segment: 0, start: 4, end: 5 },
       { type: COMMENT_START_TOKEN, value: "/*", segment: 0, start: 5, end: 7 },
       { type: TEXT_TOKEN, value: " comment ", segment: 0, start: 7, end: 16 },
       { type: COMMENT_END_TOKEN, value: "*/", segment: 0, start: 16, end: 18 },

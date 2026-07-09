@@ -39,6 +39,7 @@ function createSyntheticLSHost(
   }
 
   const allRootFiles = originalProgram.getSourceFiles().map(sf => sf.fileName);
+  console.error("[tagged-jsx] Synthetic LS host files:", allRootFiles.length, "jsxImportSource:", syntheticOptions.jsxImportSource, "jsx:", syntheticOptions.jsx, "moduleResolution:", syntheticOptions.moduleResolution);
 
   function getScriptKindFromName(name: string): tsModule.ScriptKind {
     if (name === fileName) return ts.ScriptKind.TSX;
@@ -173,14 +174,24 @@ function getOrCreateAnalysis(
 ): JsxAnalysis | undefined {
   try {
     const originalProgram = info.languageService.getProgram();
-    if (!originalProgram) return undefined;
+    if (!originalProgram) {
+      console.error("[tagged-jsx] getOrCreateAnalysis: no program");
+      return undefined;
+    }
 
     const originalSourceFile = originalProgram.getSourceFile(fileName);
-    if (!originalSourceFile) return undefined;
+    if (!originalSourceFile) {
+      console.error("[tagged-jsx] getOrCreateAnalysis: no source file for", fileName);
+      return undefined;
+    }
 
     const scriptVersion = (originalSourceFile as any).version as string | undefined;
     const cached = analysisCache.get(fileName);
-    if (cached && cached.scriptVersion === scriptVersion) return cached;
+    if (cached && cached.scriptVersion === scriptVersion) {
+      console.error("[tagged-jsx] getOrCreateAnalysis: cache HIT for", fileName, "version:", scriptVersion);
+      return cached;
+    }
+    console.error("[tagged-jsx] getOrCreateAnalysis: cache MISS for", fileName, "version:", scriptVersion);
 
     const originalCode = originalSourceFile.getFullText();
 
@@ -202,6 +213,9 @@ function getOrCreateAnalysis(
         code: 9999,
         source: "tagged-jsx",
       }));
+      console.error("[tagged-jsx] Transform OK,", (result.errors || []).length, "template errors, jsxCode length:", jsxCode.length);
+      const jsxSnippet = jsxCode.length > 300 ? jsxCode.substring(0, 300) + "..." : jsxCode;
+      console.error("[tagged-jsx] JSX:\n" + jsxSnippet);
     } catch (e) {
       console.error("[tagged-jsx] Transform failed:", (e as Error).message);
       const templatePos = findFirstTemplatePosition(originalCode, tags, ts);
@@ -222,13 +236,17 @@ function getOrCreateAnalysis(
       return undefined;
     }
 
-    if (jsxCode === originalCode) return undefined;
+    if (jsxCode === originalCode) {
+      console.error("[tagged-jsx] jsxCode === originalCode (no templates found), skipping");
+      return undefined;
+    }
 
     const host = createSyntheticLSHost(fileName, jsxCode, scriptVersion, originalProgram, ts);
     const ls = ts.createLanguageService(host);
 
     const analysis: JsxAnalysis = { ls, mappings, jsxCode, originalCode, originalSourceFile, scriptVersion, templateErrors };
     analysisCache.set(fileName, analysis);
+    console.error("[tagged-jsx] Analysis created and cached for", fileName);
     return analysis;
   } catch (e) {
     console.error("[tagged-jsx] Error creating analysis for", fileName, e);
@@ -288,6 +306,8 @@ function init(modules: { typescript: typeof tsModule }) {
     const useCallbacks: boolean = info.config?.useCallbacks ?? (vscodeConfig["tagged-jsx.useCallbacks"] ?? (vscodeConfig as any)["tagged-jsx"]?.useCallbacks) ?? true;
     const callbacks = useCallbacks ? createExpressionTransformCallbacks(ts) : undefined;
     const { toJsxWithMappings } = createJsxTransformer(tags, ts, callbacks);
+    console.error("[tagged-jsx] Plugin initialized. tags:", tags, "useCallbacks:", useCallbacks, "projectRoot:", projectRoot);
+    console.error("[tagged-jsx] Plugin config:", JSON.stringify(info.config));
 
     const proxy: tsModule.LanguageService = Object.create(null);
     for (const k of Object.keys(info.languageService) as Array<keyof tsModule.LanguageService>) {
@@ -302,6 +322,7 @@ function init(modules: { typescript: typeof tsModule }) {
         const originalDiags = info.languageService.getSemanticDiagnostics(fileName);
         const errorEntry = templateErrorCache.get(fileName);
         if (errorEntry) {
+          console.error("[tagged-jsx] getSemanticDiagnostics: no analysis, returning cached error");
           return [errorEntry.diag, ...originalDiags];
         }
         return originalDiags;
@@ -310,6 +331,8 @@ function init(modules: { typescript: typeof tsModule }) {
       const { ls, mappings, jsxCode, originalCode, originalSourceFile, templateErrors } = analysis;
       const syntactic = ls.getSyntacticDiagnostics(fileName);
       const semantic = ls.getSemanticDiagnostics(fileName);
+
+      console.error("[tagged-jsx] getSemanticDiagnostics: templateErrors:", templateErrors.length, "syntactic:", syntactic.length, "semantic:", semantic.length);
 
       const result: tsModule.Diagnostic[] = [...templateErrors];
       for (const diag of [...syntactic, ...semantic]) {
@@ -320,24 +343,75 @@ function init(modules: { typescript: typeof tsModule }) {
     };
 
     proxy.getCompletionsAtPosition = (fileName: string, position: number, options: any) => {
-      const analysis = getOrCreateAnalysis(fileName, info, toJsxWithMappings, ts, tags);
-      if (!analysis) return info.languageService.getCompletionsAtPosition(fileName, position, options);
+      try {
+        console.error("[tagged-jsx] getCompletionsAtPosition for", fileName.split(/[/\\]/).pop(), "pos:", position, "triggerKind:", options?.triggerKind, "triggerChar:", options?.triggerCharacter);
+        const analysis = getOrCreateAnalysis(fileName, info, toJsxWithMappings, ts, tags);
+        if (!analysis) {
+          console.error("[tagged-jsx]   no analysis, fallback to original LS");
+          return info.languageService.getCompletionsAtPosition(fileName, position, options);
+        }
 
-      const jsxPos = getJsxPosition(position, analysis.mappings.mappings, analysis.jsxCode.length);
-      if (jsxPos === undefined) return info.languageService.getCompletionsAtPosition(fileName, position, options);
+        const jsxPos = getJsxPosition(position, analysis.mappings.mappings, analysis.jsxCode.length);
+        console.error("[tagged-jsx]   original pos:", position, "-> jsxPos:", jsxPos);
+        if (jsxPos === undefined) {
+          console.error("[tagged-jsx]   jsxPos undefined, fallback");
+          return info.languageService.getCompletionsAtPosition(fileName, position, options);
+        }
 
-      const completions = analysis.ls.getCompletionsAtPosition(fileName, jsxPos, options);
-      if (!completions) return undefined;
+        const completions = analysis.ls.getCompletionsAtPosition(fileName, jsxPos, options);
+        if (!completions) {
+          console.error("[tagged-jsx]   synthetic LS returned null, fallback to original LS");
+          return info.languageService.getCompletionsAtPosition(fileName, position, options);
+        }
 
-      return {
-        ...completions,
-        entries: completions.entries.map((entry) => {
-          if (!entry.replacementSpan) return entry;
-          const mappedSpan = mapTextSpan(entry.replacementSpan, analysis.mappings, analysis.originalCode.length);
-          if (!mappedSpan) return entry;
-          return { ...entry, replacementSpan: mappedSpan };
-        }),
-      };
+        console.error("[tagged-jsx]   synthetic LS completions count:", completions.entries.length);
+
+        // Map replacementSpan from JSX→original coordinates and fix insertText for template syntax
+        const entries = completions.entries.map((entry) => {
+          let e = entry;
+          if (e.replacementSpan) {
+            const mapped = mapTextSpan(e.replacementSpan, analysis.mappings, analysis.originalCode.length);
+            if (mapped) e = { ...e, replacementSpan: mapped };
+          }
+          if (e.insertText) {
+            const fixed = e.insertText.replace(/=\{/g, '=${');
+            if (fixed !== e.insertText) {
+              const { isSnippet: _, ...rest } = e;
+              e = { ...rest, insertText: fixed } as tsModule.CompletionEntry;
+            }
+          }
+          return e;
+        });
+
+        // Also request completions at JSX position 1 to get element tag names,
+        // and merge them in (dedup by name)
+        try {
+          const elementCompletions = analysis.ls.getCompletionsAtPosition(fileName, 1, {});
+          if (elementCompletions && elementCompletions.entries.length > 0) {
+            const existingNames = new Set(entries.map(e => e.name));
+            const elementEntries = elementCompletions.entries
+              .filter(e => !existingNames.has(e.name))
+              .map(e => ({ ...e, replacementSpan: undefined }));
+            if (elementEntries.length > 0) {
+              console.error("[tagged-jsx]   merged", elementEntries.length, "element completions from JSX position 1");
+              entries.push(...elementEntries);
+            }
+          }
+        } catch (e2) {
+          console.error("[tagged-jsx]   error getting element completions:", (e2 as Error).message);
+        }
+
+        let optionalReplacementSpan = completions.optionalReplacementSpan;
+        if (optionalReplacementSpan) {
+          optionalReplacementSpan = mapTextSpan(optionalReplacementSpan, analysis.mappings, analysis.originalCode.length);
+          console.error("[tagged-jsx]   mapped optionalReplacementSpan: orig", JSON.stringify(completions.optionalReplacementSpan), "->", JSON.stringify(optionalReplacementSpan));
+        }
+
+        return { ...completions, entries, optionalReplacementSpan };
+      } catch (e) {
+        console.error("[tagged-jsx]   ERROR in getCompletionsAtPosition:", (e as Error).message, (e as Error).stack);
+        return info.languageService.getCompletionsAtPosition(fileName, position, options);
+      }
     };
 
     proxy.getCompletionEntryDetails = (fileName: string, position: number, entryName: string, formatOptions: any, source: string | undefined, preferences: any, data: any) => {
