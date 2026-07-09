@@ -16,6 +16,7 @@ export {
   WHITESPACE_TOKEN,
   COMMENT_START_TOKEN,
   COMMENT_END_TOKEN,
+  UNEXPECTED_CHARACTER_TOKEN,
   type Token,
   type TagNameToken,
   type TagNameToken as IdentifierToken,
@@ -30,6 +31,7 @@ export {
   type SpreadToken,
   type CommentStartToken,
   type CommentEndToken,
+  type UnexpectedCharacterToken,
 } from "./tokenize";
 export {
   parse,

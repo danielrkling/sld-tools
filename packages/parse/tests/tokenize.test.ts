@@ -14,6 +14,7 @@ import {
   WHITESPACE_TOKEN,
   COMMENT_START_TOKEN,
   COMMENT_END_TOKEN,
+  UNEXPECTED_CHARACTER_TOKEN,
   TagNameToken,
   PropNameToken,
   SpreadToken,
@@ -601,41 +602,47 @@ describe("special characters in names", () => {
   });
 });
 
-describe("invalid syntax", () => {
-  it("should throw with extra <", () => {
-    expect(() => tokenizeTemplate`<<div / >`).toThrow();
+describe("invalid syntax (non-throwing)", () => {
+  it("should emit unexpected char token for extra <", () => {
+    const tokens = tokenizeTemplate`<<div / >`;
+    expect(tokens.some((t) => t.type === UNEXPECTED_CHARACTER_TOKEN)).toBe(true);
   });
 
-  it("should throw with extra <", () => {
-    expect(() => tokenizeTemplate`<div / <>`).toThrow();
+  it("should emit unexpected char token for extra <", () => {
+    const tokens = tokenizeTemplate`<div / <>`;
+    expect(tokens.some((t) => t.type === UNEXPECTED_CHARACTER_TOKEN)).toBe(true);
   });
 
-  it("should throw on invalid identofier", () => {
-    expect(() => tokenizeTemplate`<.div />`).toThrow();
+  it("should emit unexpected char token for invalid identifier", () => {
+    const tokens = tokenizeTemplate`<.div />`;
+    expect(tokens.some((t) => t.type === UNEXPECTED_CHARACTER_TOKEN)).toBe(true);
   });
 
-  it("should throw on invalid identofier", () => {
-    expect(() => tokenizeTemplate`<div @fa />`).toThrow();
+  it("should emit unexpected char token for invalid character", () => {
+    const tokens = tokenizeTemplate`<div @fa />`;
+    expect(tokens.some((t) => t.type === UNEXPECTED_CHARACTER_TOKEN)).toBe(true);
   });
 
-  it("should throw on invalid identofier", () => {
-    expect(() => tokenizeTemplate`<div 0fa />`).toThrow();
+  it("should emit unexpected char token for invalid start character", () => {
+    const tokens = tokenizeTemplate`<div 0fa />`;
+    expect(tokens.some((t) => t.type === UNEXPECTED_CHARACTER_TOKEN)).toBe(true);
   });
 
-  it("should throw descriptive error for unterminated string", () => {
-    expect(() => tokenizeTemplate`<div id="hello`).toThrow(
-      "Unterminated string",
-    );
+  it("should handle unterminated string gracefully", () => {
+    const tokens = tokenizeTemplate`<div id="hello`;
+    expect(tokens.some((t) => t.type === QUOTED_STRING_TOKEN)).toBe(true);
+    expect(() => tokenizeTemplate`<div id="hello`).not.toThrow();
   });
 
-  it("should throw descriptive error for unexpected character", () => {
-    expect(() => tokenizeTemplate`<div @attr />`).toThrow(
-      "Unexpected character: '@'",
-    );
+  it("should emit unexpected char token for @", () => {
+    const tokens = tokenizeTemplate`<div @attr />`;
+    expect(tokens.some((t) => t.type === UNEXPECTED_CHARACTER_TOKEN)).toBe(true);
   });
 
-  it("should throw with unterminated string", () => {
-    expect(() => tokenizeTemplate`<div id="hello>`).toThrow();
+  it("should handle unterminated string with > inside gracefully", () => {
+    const tokens = tokenizeTemplate`<div id="hello>`;
+    expect(tokens.some((t) => t.type === QUOTED_STRING_TOKEN)).toBe(true);
+    expect(() => tokenizeTemplate`<div id="hello>`).not.toThrow();
   });
 });
 
