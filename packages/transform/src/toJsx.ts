@@ -179,6 +179,12 @@ export function createJsxTransformer(
         break;
       }
 
+      const needsParens = template.parent && (
+        ts.isReturnStatement(template.parent) ||
+        ts.isThrowStatement(template.parent) ||
+        ts.isYieldExpression(template.parent)
+      );
+
       let strings: string[];
       let expressions: tsModule.Expression[];
 
@@ -204,7 +210,9 @@ export function createJsxTransformer(
 
       result =
         result.slice(0, template.getStart()) +
+        (needsParens ? "(" : "") +
         jsxCode +
+        (needsParens ? ")" : "") +
         result.slice(template.getEnd());
     }
 

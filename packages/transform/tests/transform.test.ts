@@ -158,6 +158,30 @@ describe("transform callbacks", () => {
     expect(result).toContain("value=${() => v()}");
   });
 
+  it("should wrap return statement JSX in parens to prevent ASI", () => {
+    const tagged = "function render() {\n  return jsx`\n    <p>\n      Hello, ${() => name}!\n    </p>\n  `;\n}";
+    const result = toJsx(tagged).code;
+    expect(result).toContain("return (");
+    expect(result).toContain("<p>");
+    expect(result).toContain("</p>");
+    expect(result).toContain(")");
+    expect(result).not.toContain("return\n");
+  });
+
+  it("should wrap throw statement JSX in parens to prevent ASI", () => {
+    const tagged = "function fail() {\n  throw jsx`\n    <div>error</div>\n  `;\n}";
+    const result = toJsx(tagged).code;
+    expect(result).toContain("throw (");
+    expect(result).toContain("<div>error</div>");
+    expect(result).toContain(")");
+  });
+
+  it("should not add parens for non-ASI contexts like arrow function body", () => {
+    const tagged = "const fn = () => jsx`<div />`";
+    const result = toJsx(tagged).code;
+    expect(result).toBe("const fn = () => <div />");
+  });
+
   it("should transform expressions with toJSX callback", () => {
     const customToJsx = createJsxTransformer(["jsx"], ts, {
       toJSX: ({ expression, sourceCode }) => {
